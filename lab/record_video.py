@@ -37,14 +37,14 @@ def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fp
 	print(f"Saved {duration_seconds}s @ {fps}fps to {output_path}")
 
 if __name__ == "__main__":
-	xml_path = r"D:\Files\Scripts\py\Graduation Project\external\mujoco_menagerie\unitree_a1\scene.xml"
+	xml_path = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
 	modelVersion = "1"
 	exportTitle = ""
 
 	from env import UnitreeA1Env
 	from pathlib import Path
-	modelsPath = r"D:\Files\Scripts\py\Graduation Project\lab\Models"
-	videosPath = r"D:\Files\Scripts\py\Graduation Project\lab\Videos"
+	modelsPath = r".\Models"
+	videosPath = r".\Videos"
 	outputPath = f"{videosPath}/v{modelVersion}-{exportTitle or 'unnamed'}.mp4"
 	if Path(outputPath).exists():
 		response = input(f"Video [v{modelVersion}-{exportTitle or 'unnamed'}.mp4] already exists. Overwrite? (y/n): ")
