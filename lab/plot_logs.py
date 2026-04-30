@@ -29,8 +29,13 @@ def plot_training_logs(log_dir: str, output_path: str = "training_progress.png")
 	cols = 2
 	rows = (n + 1) // cols
 
+	# number of steps is the same for all metrics, so we can just take it from the first one
+	nSteps = acc.Scalars(next(iter(available.keys())))[-1].step
+	nStepsStr = f"{nSteps/1e6:.1f}M" if nSteps >= 1e6 else f"{nSteps/1e3:.1f}K" if nSteps >= 1e3 else str(nSteps)
+	print(nSteps, nStepsStr)
+
 	fig, axes = plt.subplots(rows, cols, figsize=(14, rows * 4))
-	fig.suptitle("PPO Training Progress — Unitree A1", fontsize=14, fontweight="bold", y=1.01)
+	fig.suptitle(f"PPO Training Progress — Unitree A1 - {nStepsStr} steps", fontsize=14, fontweight="bold", y=1.01)
 	axes = axes.flatten()
 
 	for i, (tag, title) in enumerate(available.items()):
@@ -66,10 +71,11 @@ def plot_training_logs(log_dir: str, output_path: str = "training_progress.png")
 
 
 if __name__ == "__main__":
-	# Point this at your tensorboard log folder
-	# It's usually ./tb_logs/PPO_1/ — check what folder was created
-	log_dir = r".\lab\tb_logs\PPO_1"
-	title = "a1_progress_5m_steps_test"
+	version = "2.1"
+	iteration = 1
+
+	log_dir = rf".\lab\tb_logs\a1_walk_v{version}_{iteration}"
+	title = f"v{version} - Iteration {iteration}"
 
 	figuresPath = r".\Figures"
 	if not os.path.exists(figuresPath):
