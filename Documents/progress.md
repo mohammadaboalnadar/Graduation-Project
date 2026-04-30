@@ -1,8 +1,10 @@
 # [v1](../lab/Models/a1_walk_v1.zip)
 - simple training loop with a basic reward function
 - reward is based solely on forward speed
-- trained for `10m` steps
+- trained for `5m` steps
 - mean ep reward on the last batch: `1533.53`
+
+![training metrics](../Figures/v1_progress_5m_steps.png)
 
 reward function:
 ```python
@@ -16,4 +18,4 @@ reward = (
 ```
 
 demo video:
-<video controls src="../lab/Videos/v1-unnamed.mp4" title="Title"></video>
+<video controls src="../Videos/v1-unnamed.mp4" title="Title"></video>
