@@ -1,7 +1,7 @@
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-import mujoco
+import mujoco, mujoco.viewer
 
 class UnitreeA1Env(gym.Env):
 	"""
@@ -9,7 +9,7 @@ class UnitreeA1Env(gym.Env):
 	Task: walk forward as fast as possible without falling.
 	"""
 
-	def __init__(self, xml_path: str, max_episode_steps: int = 1000, render_mode="human"):
+	def __init__(self, xml_path: str, max_episode_steps: int = 1000, render_mode=None):
 		super().__init__()
 
 		# ── Load your existing MuJoCo model ──────────────────────────
@@ -42,7 +42,7 @@ class UnitreeA1Env(gym.Env):
 
 		# ── Rendering setup ───────────────────────────────────────────
 		self.render_mode = render_mode
-		self._viewer = None
+		self._viewer: mujoco.viewer.MjViewer | None = None
 
 	# ──────────────────────────────────────────────────────────────────
 	def reset(self, seed=None, options=None):
@@ -71,13 +71,13 @@ class UnitreeA1Env(gym.Env):
 		self._step_count += 1
 
 		obs    = self._get_obs()
-		reward = self._compute_reward(action)
+		reward, components = self._compute_reward(action)
 
 		# Episode ends if robot falls or time limit reached
 		terminated = self._is_fallen()
 		truncated  = self._step_count >= self.max_episode_steps
 
-		return obs, reward, terminated, truncated, {}
+		return obs, reward, terminated, truncated, {"reward_components": components}
 
 	# ──────────────────────────────────────────────────────────────────
 	def _get_obs(self) -> np.ndarray:
@@ -116,30 +116,43 @@ class UnitreeA1Env(gym.Env):
 		return contacts
 
 	# ──────────────────────────────────────────────────────────────────
-	def _compute_reward(self, action: np.ndarray) -> float:
-		# Forward velocity of the base (x-axis)
-		forward_vel = self.data.qvel[0]
+	def _compute_reward(self, action: np.ndarray) -> tuple[float, dict[str, float]]:
+		forward_vel  = self.data.qvel[0]
+		lateral_vel  = abs(self.data.qvel[1])
+		vertical_vel = abs(self.data.qvel[2])  # penalise bouncing
+		ang_vel      = self.data.qvel[3:6]
+		base_quat    = self.data.qpos[3:7]     # w, x, y, z
 
-		# Lateral velocity penalty (don't drift sideways)
-		lateral_vel = abs(self.data.qvel[1])
+		# Reward forward velocity but cap it — no reward for flipping fast
+		target_vel  = 0.8
+		vel_reward  = np.exp(-2.0 * abs(forward_vel - target_vel))  # gaussian peak at target
 
-		# Energy penalty (discourage excessive torques)
-		energy = np.sum(np.square(action))
+		# Penalise moving sideways or bouncing
+		lateral_penalty  = -0.5 * lateral_vel
+		vertical_penalty = -0.5 * vertical_vel
 
-		# Alive bonus — given every step the robot stays up
-		alive_bonus = 1.0
+		# Reward staying upright — w component of quaternion is 1 when flat
+		uprightness       = float(base_quat[0] ** 2)
+		orientation_reward = 2.0 * uprightness
 
-		# Fall penalty — large negative if terminated next step
-		fall_penalty = 5.0 if self._is_fallen() else 0.0
+		# Penalise spinning — this directly punishes flipping
+		ang_vel_penalty = -0.2 * float(np.sum(np.square(ang_vel)))
 
-		reward = (
-			+ 2.0 * forward_vel
-			- 0.5 * lateral_vel
-			- 0.01 * energy
-			+ alive_bonus
-			- fall_penalty
-		)
-		return float(reward)
+		# Penalise large torques
+		energy_penalty = -0.01 * float(np.sum(np.square(action)))
+
+		# Heavy fall penalty
+		fall_penalty = -50.0 if self._is_fallen() else 0.0
+
+		components = {
+			"forward":     float(vel_reward),
+			"lateral":     float(lateral_penalty),
+			"orientation": float(orientation_reward),
+			"ang_vel":     float(ang_vel_penalty),
+			"energy":      float(energy_penalty),
+			"fall":        float(fall_penalty),
+		}
+		return float(sum(components.values())), components
 
 	def _is_fallen(self) -> bool:
 		# Base height: qpos[2] is z-position of the root body
@@ -150,12 +163,15 @@ class UnitreeA1Env(gym.Env):
 	def render(self):
 		if self.render_mode == "human":
 			if self._viewer is None:
-				self._viewer = mujoco.viewer.launch_passive(self.model, self.data)
+				self._viewer = mujoco.viewer.launch_passive(self.model, self.data, show_left_ui=False, show_right_ui=False)
+				self._viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+				self._viewer.cam.trackbodyid = 0  # track the base
 			self._viewer.sync()  # pushes current self.data state to the window
 
 		elif self.render_mode == "rgb_array":
 			if self._viewer is None:
 				self._viewer = mujoco.Renderer(self.model, height=480, width=640)
+				self._viewer.update_scene(self.data, camera="track")
 			self._viewer.update_scene(self.data)
 			return self._viewer.render()
 	
