@@ -1,8 +1,5 @@
 external
-lab/Models/*
-lab/Videos/*
 lab/tb_logs/*
 logs
-models
 src
 */__pycache__
