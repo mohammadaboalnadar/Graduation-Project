@@ -45,3 +45,17 @@ Model v2.1 improved substantially over v2.0 but eventually plummeted in performa
 
 demo video:
 <video controls src="../Videos/v2.1-unnamed.mp4" title="v2.1"></video>
+
+# [v2.2](../Models/a1_walk_v2.2.zip)
+- Removed the alive bonus to prevent the model from learning to stay dormant and not move at all
+- Trained for `10m` steps over `8` envs
+
+Model v2.2 developed a more dynamic gait that allows it to maintain a stable speed while keeping its base upright, however it is walking over its knees instead of feet, which the robot is not designed for and would likely cause damage in the real world.
+
+![training metrics](<../Figures/v2.2 - Iteration 2.png>)
+
+demo video:
+<video controls src="../Videos/v2.2-unnamed.mp4" title="v2.2"></video>
+
+# [v2.3](../Models/a1_walk_v2.3.zip)
+- added heavy penalty logic to any contact other than the feet, This should encourage the model to learn a more realistic gait that uses its feet for contact instead of other parts of the body and should also prevent it from colliding with itself, which would be impractical and likely damaging in the real world.

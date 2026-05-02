@@ -3,3 +3,4 @@ lab/tb_logs/*
 logs
 src
 */__pycache__
+Models/checkpoints

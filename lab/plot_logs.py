@@ -71,8 +71,8 @@ def plot_training_logs(log_dir: str, output_path: str = "training_progress.png")
 
 
 if __name__ == "__main__":
-	version = "2.1"
-	iteration = 1
+	version = "2.2"
+	iteration = 2
 
 	log_dir = rf".\lab\tb_logs\a1_walk_v{version}_{iteration}"
 	title = f"v{version} - Iteration {iteration}"

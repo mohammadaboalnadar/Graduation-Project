@@ -2,17 +2,21 @@ import imageio
 import numpy as np
 from stable_baselines3 import PPO
 
-def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fps=60):
+def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fps=60, speed_multiplier=1.0):
 	model = PPO.load(model_path)
 	env = env(xml_path, render_mode="rgb_array")
 
-	# Get the actual simulation timestep from the model
-	sim_fps = 1.0 / env.model.opt.timestep
-	print(f"Simulation runs at {sim_fps:.0f} Hz")
+	physics_dt   = env.model.opt.timestep
+	n_substeps   = env.model.opt.nsubsteps if hasattr(env.model.opt, 'nsubsteps') else 1
+	step_dt      = physics_dt * n_substeps  # real seconds per env.step()
 
-	# Only render every Nth step to match desired output fps
-	render_every = int(sim_fps / fps)
-	print(f"Capturing 1 frame every {render_every} steps to produce {fps}fps video")
+	sim_fps      = speed_multiplier / step_dt
+	render_every = max(1, round(sim_fps / fps))
+
+	print(f"Physics dt:    {physics_dt*1000:.2f}ms")
+	print(f"Substeps:      {n_substeps}")
+	print(f"Real dt/step:  {step_dt*1000:.2f}ms  ({sim_fps:.1f} Hz)")
+	print(f"Render every:  {render_every} steps → {sim_fps/render_every:.1f}fps recorded")
 
 	total_frames = duration_seconds * fps
 	frames = []
@@ -38,8 +42,9 @@ def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fp
 
 if __name__ == "__main__":
 	xml_path = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
-	modelVersion = "1"
-	exportTitle = ""
+	modelVersion = "5.0"
+	exportTitle = "Slowmo 0.25x"
+	speedMultiplier = 0.25
 
 	from env import UnitreeA1Env
 	from pathlib import Path
@@ -51,4 +56,4 @@ if __name__ == "__main__":
 		if response.lower() != "y":
 			print("Aborting video export.")
 			exit()
-	record_video(f"{modelsPath}/a1_walk_v{modelVersion}.zip", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60)
+	record_video(f"{modelsPath}/a1_walk_v{modelVersion}", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)

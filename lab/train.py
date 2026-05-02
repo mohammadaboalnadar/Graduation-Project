@@ -1,9 +1,10 @@
 import mujoco
 import numpy as np
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.utils import get_linear_fn
 from env import UnitreeA1Env
 from pathlib import Path
 import multiprocessing
@@ -24,8 +25,9 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "2.2"
-TOTAL_TIMESTEPS = 10_000_000
+VERSION = "5.0"
+TOTAL_TIMESTEPS = 100_000_000
+CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 30/dt  # 30 seconds per episode
 N_ENVS = 8
 
@@ -84,36 +86,38 @@ if __name__ == "__main__":
 		print("TensorBoard not found in PATH")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
+	env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_reward=10.0)
 
 	# Load existing model if available, otherwise create new one
 	modelExists = Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists()
 	if modelExists:
 		print(f"Loading existing model a1_walk_v{VERSION}.zip")
+		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 	else:
 		print("Creating new model")
+		progress = 1 - (model.num_timesteps / TOTAL_TIMESTEPS)
 		model = PPO(
 			"MlpPolicy",
 			env,
-			n_steps=2048,
-			batch_size=64 * n_envs,
+			n_steps=4096,
+			batch_size=512,
 			n_epochs=10,
 			gamma=0.99,
 			gae_lambda=0.95,
-			clip_range=0.2,
-			ent_coef=0.01,
-			learning_rate=3e-4,
+			clip_range=get_linear_fn(0.2, 0.05, progress),
+			learning_rate=get_linear_fn(3e-4, 1e-5, progress),
+			target_kl=0.01,    # hard stop if KL exceeds this — this is the critical line
+			ent_coef=0.005,
 			verbose=0,
 			tensorboard_log="./lab/tb_logs/",
-			policy_kwargs=dict(
-				net_arch=[256, 256]  # bigger network than default [64, 64]
-			)
+			policy_kwargs=dict(net_arch=[256, 256])
 		)
 
 	try:
 		model.learn(
 			total_timesteps=TOTAL_TIMESTEPS,
-			callback=LogCallback(),
+			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ//N_ENVS, save_path=f"{modelsPath}/checkpoints/v{VERSION}")],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,
 			reset_num_timesteps = not modelExists
@@ -124,5 +128,6 @@ if __name__ == "__main__":
 		print(f"An error occurred: {e}")
 	finally:
 		model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
+		env.save(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl")
 		env.close()
 		print(f"Model saved to {Path(f'{modelsPath}/a1_walk_v{VERSION}.zip').absolute()}")
