@@ -25,9 +25,9 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "5.0"
-TOTAL_TIMESTEPS = 100_000_000
-CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
+VERSION = "6.0"
+TOTAL_TIMESTEPS = 200_000_000
+CHECKPOINT_FREQ = 10_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 30/dt  # 30 seconds per episode
 N_ENVS = 8
 
@@ -73,17 +73,17 @@ if __name__ == "__main__":
 	n_envs = N_ENVS or multiprocessing.cpu_count() - 2
 	print(f"Using {n_envs} envs for training")
 
-	# Launch tensorboard if available (logdir relative to repo root)
-	tb_cmd = ["tensorboard", "--logdir", "./lab/tb_logs/"]
-	if shutil.which("tensorboard") is not None:
-		try:
-			subprocess.Popen(tb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-			print("TensorBoard started: tensorboard --logdir ./lab/tb_logs/")
-			print("Live view: http://localhost:6006/")
-		except Exception:
-			print("Failed to start TensorBoard")
-	else:
-		print("TensorBoard not found in PATH")
+	# # Launch tensorboard if available (logdir relative to repo root)
+	# tb_cmd = ["tensorboard", "--logdir", "./lab/tb_logs/"]
+	# if shutil.which("tensorboard") is not None:
+	# 	try:
+	# 		subprocess.Popen(tb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	# 		print("TensorBoard started: tensorboard --logdir ./lab/tb_logs/")
+	# 		print("Live view: http://localhost:6006/")
+	# 	except Exception:
+	# 		print("Failed to start TensorBoard")
+	# else:
+	# 	print("TensorBoard not found in PATH")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
 	env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_reward=10.0)
@@ -96,7 +96,7 @@ if __name__ == "__main__":
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 	else:
 		print("Creating new model")
-		progress = 1 - (model.num_timesteps / TOTAL_TIMESTEPS)
+		# progress = 1 - (model.num_timesteps / TOTAL_TIMESTEPS)
 		model = PPO(
 			"MlpPolicy",
 			env,
@@ -105,13 +105,15 @@ if __name__ == "__main__":
 			n_epochs=10,
 			gamma=0.99,
 			gae_lambda=0.95,
-			clip_range=get_linear_fn(0.2, 0.05, progress),
-			learning_rate=get_linear_fn(3e-4, 1e-5, progress),
+			clip_range = 0.2, #clip_range=get_linear_fn(0.2, 0.05, progress),
+			learning_rate = 3e-4, #learning_rate=get_linear_fn(3e-4, 1e-5, progress),
 			target_kl=0.01,    # hard stop if KL exceeds this — this is the critical line
 			ent_coef=0.005,
 			verbose=0,
 			tensorboard_log="./lab/tb_logs/",
-			policy_kwargs=dict(net_arch=[256, 256])
+			policy_kwargs=dict(
+				net_arch=[256, 256]
+			)
 		)
 
 	try:
