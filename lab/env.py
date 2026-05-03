@@ -85,7 +85,7 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		speed         = self.np_random.uniform(0.3, 1.2)
+		speed         = self.np_random.uniform(0, 1.2)
 		direction     = self.np_random.uniform(-np.pi, np.pi)
 		self.target_vel   = np.array([
 			speed * np.cos(direction),
