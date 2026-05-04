@@ -5,11 +5,14 @@ import mujoco, mujoco.viewer
 
 class UnitreeA1Env(gym.Env):
 
-	def __init__(self, xml_path: str, max_episode_steps: int = 1000, render_mode=None):
+	def __init__(self, xml_path: str, max_episode_steps: int = 1000, n_substeps=10, render_mode=None):
 		super().__init__()
 
 		self.model = mujoco.MjModel.from_xml_path(xml_path)
 		self.data  = mujoco.MjData(self.model)
+
+		self.n_substeps = n_substeps
+		self.dt = self.model.opt.timestep * self.n_substeps
 
 		foot_geom_names = ["FR_foot", "FL_foot", "RR_foot", "RL_foot"]
 		self._foot_geom_ids = set(
@@ -75,7 +78,7 @@ class UnitreeA1Env(gym.Env):
 	def reset(self, seed=None, options=None):
 		super().reset(seed=seed)
 
-		mujoco.mj_resetData(self.model, self.data)
+		mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
 		self.data.qpos[:] += self.np_random.uniform(-0.01, 0.01, self.model.nq)
 		self.data.qvel[:] += self.np_random.uniform(-0.01, 0.01, self.model.nv)
 		# Randomise starting yaw so the robot learns from any orientation
@@ -104,7 +107,8 @@ class UnitreeA1Env(gym.Env):
 	# ──────────────────────────────────────────────────────────────────
 	def step(self, action: np.ndarray):
 		self.data.ctrl[:] = action * self.torque_limit
-		mujoco.mj_step(self.model, self.data)
+		for _ in range(self.n_substeps):
+			mujoco.mj_step(self.model, self.data)
 		self._step_count += 1
 
 		obs                        = self._get_obs()
@@ -200,7 +204,7 @@ class UnitreeA1Env(gym.Env):
 		energy_penalty   = -0.01 * float(np.sum(np.square(action)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -1000.0 if self._is_fallen() else 0.0
+		fall_penalty = -50.0 if self._is_fallen() else 0.0
 
 		# ── Height reward ─────────────────────────────────────────────
 		height_reward = float(np.exp(-2.0 * (self.data.qpos[2] - self.target_height) ** 2))

@@ -25,10 +25,10 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "7.1"
-TOTAL_TIMESTEPS = 500_000_000
+VERSION = "7.2"
+TOTAL_TIMESTEPS = 30_000_000
 CHECKPOINT_FREQ = 10_000_000  # Save a checkpoint every N timesteps
-MAX_EPISODE_STEPS = 30/dt  # 30 seconds per episode
+MAX_EPISODE_STEPS = 1000
 N_ENVS = 8
 
 #[]#####################
@@ -132,9 +132,9 @@ if __name__ == "__main__":
 		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 
-		model.learning_rate = make_schedule(3e-4, 1e-6, TOTAL_TIMESTEPS, model.num_timesteps)
-		model.clip_range    = make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, model.num_timesteps)
-		model.target_kl     = 0.01
+		model.learning_rate = make_schedule(2e-4, 2e-4, TOTAL_TIMESTEPS, model.num_timesteps)
+		model.clip_range    = make_schedule(0.1,  0.1, TOTAL_TIMESTEPS, model.num_timesteps)
+		# model.target_kl     = 0.01
 	else:
 		print("Creating new model")
 		model = PPO(
@@ -146,8 +146,8 @@ if __name__ == "__main__":
 			batch_size=512,
 			n_epochs=10,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
-			clip_range=make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
+			learning_rate=3e-4,#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			clip_range=0.2,#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			# target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
