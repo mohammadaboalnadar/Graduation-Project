@@ -1,5 +1,6 @@
 external
 lab/tb_logs/*
+archive/tb_logs/*
 logs
 src
 */__pycache__

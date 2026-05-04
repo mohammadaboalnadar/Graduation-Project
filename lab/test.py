@@ -3,7 +3,7 @@ from env import UnitreeA1Env
 import numpy as np
 import time
 
-VERSION = "7.2"
+VERSION = "7.3"
 SPEED_MULTIPLIER = 0.5  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model

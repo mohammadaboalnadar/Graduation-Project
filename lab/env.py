@@ -53,7 +53,7 @@ class UnitreeA1Env(gym.Env):
 		self.target_pitch   = 0.0    
 		self.target_roll    = 0.0
 		self.target_quat	= np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)  # w, x, y, z
-		self.target_height  = 0.42
+		self.target_height  = 0.27
 
 		# ── Rendering setup ───────────────────────────────────────────
 		self.render_mode = render_mode
@@ -188,7 +188,7 @@ class UnitreeA1Env(gym.Env):
 			cos_sim = float(np.dot(actual_vel, self.target_vel) /
 							(actual_speed * target_speed))
 		else:
-			cos_sim = 0.0
+			cos_sim = 1.0
 
 		# Magnitude: gaussian peak when speed matches target
 		speed_reward  = float(np.exp(-2.0 * (actual_speed - target_speed) ** 2))
@@ -204,7 +204,7 @@ class UnitreeA1Env(gym.Env):
 		energy_penalty   = -0.01 * float(np.sum(np.square(action)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -50.0 if self._is_fallen() else 0.0
+		fall_penalty = -10.0 if self._is_fallen() else 0.0
 
 		# ── Height reward ─────────────────────────────────────────────
 		height_reward = float(np.exp(-2.0 * (self.data.qpos[2] - self.target_height) ** 2))
@@ -218,16 +218,25 @@ class UnitreeA1Env(gym.Env):
 			"vertical":      vertical_penalty,
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
+			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward
 		}
 
-		return float(sum(components.values())), components
+		rewards = {
+			"ang_vel": components["ang_vel"],
+			"vertical": components["vertical"],
+			"energy": components["energy"],
+			"fall": components["fall"],
+			"goal_product": components["goal_product"]
+		}
+
+		return float(sum(rewards.values())), components
 
 	# ──────────────────────────────────────────────────────────────────
 	def _is_fallen(self) -> bool:
 		base_height  = self.data.qpos[2]
 		base_quat    = self.data.qpos[3:7]
 		uprightness  = base_quat[0] ** 2
-		return bool(base_height < 0.25 or uprightness < 0.5)
+		return bool(base_height < 0.1 or uprightness < 0.5)
 
 	# ──────────────────────────────────────────────────────────────────
 	def render(self):
