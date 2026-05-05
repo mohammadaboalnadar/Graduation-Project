@@ -31,6 +31,8 @@ class UnitreeA1Env(gym.Env):
 		self.action_space = spaces.Box(
 			low=-1.0, high=1.0, shape=(n_actuators,), dtype=np.float32
 		)
+		self.ctrl_min = self.model.actuator_ctrlrange[:, 0].copy()
+		self.ctrl_max = self.model.actuator_ctrlrange[:, 1].copy()
 
 		# ── Observation space ─────────────────────────────────────────
 		# 12 joint pos + 12 joint vel							= 24
@@ -44,8 +46,6 @@ class UnitreeA1Env(gym.Env):
 		self.observation_space = spaces.Box(
 			low=-np.inf, high=np.inf, shape=(45,), dtype=np.float32
 		)
-
-		self.torque_limit = 33.5
 
 		# ── Command state (randomised each episode) ───────────────────
 		self.target_vel     = np.zeros(2, dtype=np.float32)  # [vx, vy] m/s
@@ -79,8 +79,8 @@ class UnitreeA1Env(gym.Env):
 		super().reset(seed=seed)
 
 		mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
-		self.data.qpos[:] += self.np_random.uniform(-0.01, 0.01, self.model.nq)
-		self.data.qvel[:] += self.np_random.uniform(-0.01, 0.01, self.model.nv)
+		# self.data.qpos[:] += self.np_random.uniform(-0.01, 0.01, self.model.nq)
+		# self.data.qvel[:] += self.np_random.uniform(-0.01, 0.01, self.model.nv)
 		# Randomise starting yaw so the robot learns from any orientation
 		# start_yaw = self.np_random.uniform(-np.pi, np.pi)
 		# cy, sy = np.cos(start_yaw / 2), np.sin(start_yaw / 2)
@@ -100,13 +100,21 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		# self.target_height = self.np_random.uniform(0.25, 0.4)  # ±5 cm around nominal height
+		self.target_height = self.np_random.uniform(0.15, 0.35)
 
 		return self._get_obs(), {}
 
 	# ──────────────────────────────────────────────────────────────────
 	def step(self, action: np.ndarray):
-		self.data.ctrl[:] = action * self.torque_limit
+		# Clip action to ensure it strictly stays in [-1, 1] before scaling
+		action = np.clip(action, -1.0, 1.0)
+
+		# Map [-1, 1] to [ctrl_min, ctrl_max]
+		mapped_action = self.ctrl_min + (action + 1.0) * 0.5 * (self.ctrl_max - self.ctrl_min)
+		
+		# Apply absolute target angles to the position actuators
+		self.data.ctrl[:] = mapped_action
+
 		for _ in range(self.n_substeps):
 			mujoco.mj_step(self.model, self.data)
 		self._step_count += 1
@@ -191,23 +199,25 @@ class UnitreeA1Env(gym.Env):
 			cos_sim = 1.0
 
 		# Magnitude: gaussian peak when speed matches target
-		speed_reward  = float(np.exp(-2.0 * (actual_speed - target_speed) ** 2))
+		speed_reward  = float(np.exp(-20.0 * (actual_speed - target_speed) ** 2))
 
 		# ── Heading rewards ───────────────────────────────────────────
-		quat_similarity = float(np.dot(self.data.qpos[3:7], self.target_quat))
+		quat_similarity = float(np.dot(self.data.qpos[3:7], self.target_quat) ** 2)
 
 		# ── Stability penalties ───────────────────────────────────────
 		vertical_vel    = abs(float(self.data.qvel[2]))
 		ang_vel         = self.data.qvel[3:6]
 		ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
 		vertical_penalty = -0.1 * vertical_vel
-		energy_penalty   = -0.01 * float(np.sum(np.square(action)))
+
+		torques = self.data.qfrc_actuator
+		energy_penalty   = -2e-4 * float(np.sum(np.square(torques)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -10.0 if self._is_fallen() else 0.0
 
 		# ── Height reward ─────────────────────────────────────────────
-		height_reward = float(np.exp(-2.0 * (self.data.qpos[2] - self.target_height) ** 2))
+		height_reward = float(np.exp(-1000.0 * (self.data.qpos[2] - self.target_height) ** 2))
 
 		components = {
 			"vel_direction": cos_sim,
@@ -218,7 +228,8 @@ class UnitreeA1Env(gym.Env):
 			"vertical":      vertical_penalty,
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
-			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward
+			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
+			"alive": 4.0
 		}
 
 		rewards = {
@@ -226,7 +237,8 @@ class UnitreeA1Env(gym.Env):
 			"vertical": components["vertical"],
 			"energy": components["energy"],
 			"fall": components["fall"],
-			"goal_product": components["goal_product"]
+			"goal_product": components["goal_product"],
+			"alive": components["alive"]
 		}
 
 		return float(sum(rewards.values())), components
@@ -244,7 +256,7 @@ class UnitreeA1Env(gym.Env):
 			if self._viewer is None:
 				self._viewer = mujoco.viewer.launch_passive(
 					self.model, self.data,
-					show_left_ui=False, show_right_ui=False
+					show_left_ui=True, show_right_ui=True
 				)
 				self._viewer.cam.type       = mujoco.mjtCamera.mjCAMERA_TRACKING
 				self._viewer.cam.trackbodyid = 0

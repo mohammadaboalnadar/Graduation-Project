@@ -25,10 +25,10 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "7.3"
-TOTAL_TIMESTEPS = 30_000_000
-CHECKPOINT_FREQ = 10_000_000  # Save a checkpoint every N timesteps
-MAX_EPISODE_STEPS = 1000
+VERSION = "8.2"
+TOTAL_TIMESTEPS = 100_000_000
+CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
+MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
 N_ENVS = 8
 
 #[]#####################
@@ -135,6 +135,7 @@ if __name__ == "__main__":
 		# model.learning_rate = make_schedule(3e-4, 2e-4, TOTAL_TIMESTEPS, model.num_timesteps)
 		# model.clip_range    = make_schedule(0.1,  0.1, TOTAL_TIMESTEPS, model.num_timesteps)
 		# model.target_kl     = 0.01
+		# model.ent_coef	  = 0.005
 	else:
 		print("Creating new model")
 		model = PPO(
@@ -154,7 +155,7 @@ if __name__ == "__main__":
 			gamma=0.99,
 			gae_lambda=0.95,
 			# ── Entropy ───────────────────────────────────────────────────
-			ent_coef=0,#0.005,         # small but nonzero — keeps exploration alive
+			ent_coef=0.005,         # small but nonzero — keeps exploration alive
 			# ── Value function ────────────────────────────────────────────
 			vf_coef=0.5,
 			# max_grad_norm=0.5,      # gradient clipping — extra protection against explosions
