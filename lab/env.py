@@ -214,7 +214,7 @@ class UnitreeA1Env(gym.Env):
 		energy_penalty   = -2e-4 * float(np.sum(np.square(torques)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -10.0 if self._is_fallen() else 0.0
+		fall_penalty = -1000.0 if self._is_fallen() else 0.0
 
 		# ── Height reward ─────────────────────────────────────────────
 		height_reward = float(np.exp(-1000.0 * (self.data.qpos[2] - self.target_height) ** 2))
@@ -229,7 +229,6 @@ class UnitreeA1Env(gym.Env):
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
 			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
-			"alive": 4.0
 		}
 
 		rewards = {
@@ -237,8 +236,7 @@ class UnitreeA1Env(gym.Env):
 			"vertical": components["vertical"],
 			"energy": components["energy"],
 			"fall": components["fall"],
-			"goal_product": components["goal_product"],
-			"alive": components["alive"]
+			"goal_product": components["goal_product"]
 		}
 
 		return float(sum(rewards.values())), components
@@ -248,7 +246,7 @@ class UnitreeA1Env(gym.Env):
 		base_height  = self.data.qpos[2]
 		base_quat    = self.data.qpos[3:7]
 		uprightness  = base_quat[0] ** 2
-		return bool(base_height < 0.1 or uprightness < 0.5)
+		return bool(base_height < 0.15 or uprightness < 0.5)
 
 	# ──────────────────────────────────────────────────────────────────
 	def render(self):
