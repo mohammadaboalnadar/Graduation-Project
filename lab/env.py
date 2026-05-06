@@ -33,13 +33,13 @@ class UnitreeA1Env(gym.Env):
 		)
 		self.ctrl_min = self.model.actuator_ctrlrange[:, 0].copy()
 		self.ctrl_max = self.model.actuator_ctrlrange[:, 1].copy()
-		self.default_dof_pos = np.array([
-			-0.1, 0.8, -1.5,   # Front Right
-			0.1, 0.8, -1.5,   # Front Left
-			-0.1, 1.0, -1.5,   # Rear Right
-			0.1, 1.0, -1.5    # Rear Left
-		], dtype=np.float32)
-		self.action_scale = 0.25 # 0.25 deviation from default pose at max action
+		# self.default_dof_pos = np.array([
+		# 	-0.1, 0.8, -1.5,   # Front Right
+		# 	0.1, 0.8, -1.5,   # Front Left
+		# 	-0.1, 1.0, -1.5,   # Rear Right
+		# 	0.1, 1.0, -1.5    # Rear Left
+		# ], dtype=np.float32)
+		# self.action_scale = 0.5 # deviation from default pose at max action
 
 		# ── Observation space ─────────────────────────────────────────
 		# 12 joint pos + 12 joint vel							= 24
@@ -107,7 +107,7 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		self.target_height = self.np_random.uniform(0.15, 0.35)
+		# self.target_height = self.np_random.uniform(0.15, 0.35)
 
 		return self._get_obs(), {}
 
@@ -117,7 +117,8 @@ class UnitreeA1Env(gym.Env):
 		action = np.clip(action, -1.0, 1.0)
 
 		# Map [-1, 1] to [ctrl_min, ctrl_max]
-		mapped_action = self.default_dof_pos + (action * self.action_scale)
+		# mapped_action = self.default_dof_pos + (action * self.action_scale)
+		mapped_action = self.ctrl_min + (0.5 * (action + 1.0) * (self.ctrl_max - self.ctrl_min))
 		
 		# Apply absolute target angles to the position actuators
 		self.data.ctrl[:] = mapped_action
