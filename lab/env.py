@@ -31,15 +31,15 @@ class UnitreeA1Env(gym.Env):
 		self.action_space = spaces.Box(
 			low=-1.0, high=1.0, shape=(n_actuators,), dtype=np.float32
 		)
-		self.ctrl_min = self.model.actuator_ctrlrange[:, 0].copy()
-		self.ctrl_max = self.model.actuator_ctrlrange[:, 1].copy()
-		# self.default_dof_pos = np.array([
-		# 	-0.1, 0.8, -1.5,   # Front Right
-		# 	0.1, 0.8, -1.5,   # Front Left
-		# 	-0.1, 1.0, -1.5,   # Rear Right
-		# 	0.1, 1.0, -1.5    # Rear Left
-		# ], dtype=np.float32)
-		# self.action_scale = 0.5 # deviation from default pose at max action
+		# self.ctrl_min = self.model.actuator_ctrlrange[:, 0].copy()
+		# self.ctrl_max = self.model.actuator_ctrlrange[:, 1].copy()
+		self.default_dof_pos = np.array([
+			-0.1, 0.8, -1.5,   # Front Right
+			0.1, 0.8, -1.5,   # Front Left
+			-0.1, 1.0, -1.5,   # Rear Right
+			0.1, 1.0, -1.5    # Rear Left
+		], dtype=np.float32)
+		self.action_scale = 0.5 # deviation from default pose at max action
 
 		# ── Observation space ─────────────────────────────────────────
 		# 12 joint pos + 12 joint vel							= 24
@@ -107,7 +107,7 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		# self.target_height = self.np_random.uniform(0.15, 0.35)
+		self.target_height = self.np_random.uniform(0.15, 0.35)
 
 		return self._get_obs(), {}
 
@@ -117,8 +117,8 @@ class UnitreeA1Env(gym.Env):
 		action = np.clip(action, -1.0, 1.0)
 
 		# Map [-1, 1] to [ctrl_min, ctrl_max]
-		# mapped_action = self.default_dof_pos + (action * self.action_scale)
-		mapped_action = self.ctrl_min + (0.5 * (action + 1.0) * (self.ctrl_max - self.ctrl_min))
+		mapped_action = self.default_dof_pos + (action * self.action_scale)
+		# mapped_action = self.ctrl_min + (0.5 * (action + 1.0) * (self.ctrl_max - self.ctrl_min))
 		
 		# Apply absolute target angles to the position actuators
 		self.data.ctrl[:] = mapped_action
@@ -225,7 +225,7 @@ class UnitreeA1Env(gym.Env):
 		fall_penalty = -1000.0 if self._is_fallen() else 0.0
 
 		# ── Height reward ─────────────────────────────────────────────
-		height_reward = float(np.exp(-1000.0 * (self.data.qpos[2] - self.target_height) ** 2))
+		height_reward = float(np.exp(-100.0 * (self.data.qpos[2] - self.target_height) ** 2))
 
 		components = {
 			"vel_direction": cos_sim,
