@@ -53,7 +53,7 @@ class UnitreeA1Env(gym.Env):
 		self.target_pitch   = 0.0    
 		self.target_roll    = 0.0
 		self.target_quat	= np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)  # w, x, y, z
-		self.target_height  = 0.27
+		self.target_height  = 0.35
 
 		# ── Rendering setup ───────────────────────────────────────────
 		self.render_mode = render_mode
@@ -100,7 +100,7 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		self.target_height = self.np_random.uniform(0.15, 0.35)
+		# self.target_height = self.np_random.uniform(0.15, 0.35)
 
 		return self._get_obs(), {}
 
@@ -236,7 +236,8 @@ class UnitreeA1Env(gym.Env):
 			"vertical": components["vertical"],
 			"energy": components["energy"],
 			"fall": components["fall"],
-			"goal_product": components["goal_product"]
+			"goal_product": components["goal_product"],
+			"alive": 4.0
 		}
 
 		return float(sum(rewards.values())), components

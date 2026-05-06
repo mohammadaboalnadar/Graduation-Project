@@ -25,7 +25,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "8.3"
+VERSION = "8.4"
 TOTAL_TIMESTEPS = 100_000_000
 CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -132,9 +132,10 @@ if __name__ == "__main__":
 		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 
-		# model.learning_rate = make_schedule(3e-4, 2e-4, TOTAL_TIMESTEPS, model.num_timesteps)
-		# model.clip_range    = make_schedule(0.1,  0.1, TOTAL_TIMESTEPS, model.num_timesteps)
-		# model.target_kl     = 0.01
+		model.learning_rate = get_linear_fn(3e-4, 1e-5, 1)
+		model.clip_range    = get_linear_fn(0.2,  0.05, 1)
+		# model.learning_rate = float(5e-5)
+		model.target_kl     = 0.05
 		# model.ent_coef	  = 0.005
 	else:
 		print("Creating new model")
