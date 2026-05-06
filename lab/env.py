@@ -219,10 +219,10 @@ class UnitreeA1Env(gym.Env):
 		# vertical_penalty = -0.1 * vertical_vel
 
 		torques = self.data.qfrc_actuator
-		energy_penalty   = -2e-4 * float(np.sum(np.square(torques)))
+		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -1000.0 if self._is_fallen() else 0.0
+		fall_penalty = -100.0 if self._is_fallen() else 0.0
 
 		# ── Height reward ─────────────────────────────────────────────
 		height_reward = float(np.exp(-100.0 * (self.data.qpos[2] - self.target_height) ** 2))
@@ -245,7 +245,7 @@ class UnitreeA1Env(gym.Env):
 			"energy": components["energy"],
 			"fall": components["fall"],
 			"goal_product": components["goal_product"],
-			"alive": 4.0
+			"alive": .5
 		}
 
 		return float(sum(rewards.values())), components
