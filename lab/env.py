@@ -86,8 +86,8 @@ class UnitreeA1Env(gym.Env):
 		super().reset(seed=seed)
 
 		mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
-		# self.data.qpos[:] += self.np_random.uniform(-0.01, 0.01, self.model.nq)
-		# self.data.qvel[:] += self.np_random.uniform(-0.01, 0.01, self.model.nv)
+		self.data.qpos[:] += self.np_random.uniform(-0.01, 0.01, self.model.nq)
+		self.data.qvel[:] += self.np_random.uniform(-0.01, 0.01, self.model.nv)
 		# Randomise starting yaw so the robot learns from any orientation
 		# start_yaw = self.np_random.uniform(-np.pi, np.pi)
 		# cy, sy = np.cos(start_yaw / 2), np.sin(start_yaw / 2)
@@ -107,7 +107,7 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		# self.target_height = self.np_random.uniform(0.15, 0.35)
+		self.target_height = self.np_random.uniform(0.15, 0.35)
 
 		return self._get_obs(), {}
 
@@ -254,7 +254,7 @@ class UnitreeA1Env(gym.Env):
 		base_height  = self.data.qpos[2]
 		base_quat    = self.data.qpos[3:7]
 		uprightness  = base_quat[0] ** 2
-		return bool(base_height < 0.15 or uprightness < 0.5)
+		return bool(base_height < 0.12 or uprightness < 0.5)
 
 	# ──────────────────────────────────────────────────────────────────
 	def render(self):
