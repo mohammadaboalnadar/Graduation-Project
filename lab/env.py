@@ -214,8 +214,8 @@ class UnitreeA1Env(gym.Env):
 		# ── Stability penalties ───────────────────────────────────────
 		vertical_vel    = abs(float(self.data.qvel[2]))
 		ang_vel         = self.data.qvel[3:6]
-		ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
-		vertical_penalty = -0.1 * vertical_vel
+		# ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
+		# vertical_penalty = -0.1 * vertical_vel
 
 		torques = self.data.qfrc_actuator
 		energy_penalty   = -2e-4 * float(np.sum(np.square(torques)))
@@ -231,16 +231,16 @@ class UnitreeA1Env(gym.Env):
 			"vel_magnitude": speed_reward,
 			"heading":        quat_similarity,
 			"height":         height_reward,
-			"ang_vel":       ang_vel_penalty,
-			"vertical":      vertical_penalty,
+			# "ang_vel":       ang_vel_penalty,
+			# "vertical":      vertical_penalty,
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
 			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
 		}
 
 		rewards = {
-			"ang_vel": components["ang_vel"],
-			"vertical": components["vertical"],
+			# "ang_vel": components["ang_vel"],
+			# "vertical": components["vertical"],
 			"energy": components["energy"],
 			"fall": components["fall"],
 			"goal_product": components["goal_product"],
