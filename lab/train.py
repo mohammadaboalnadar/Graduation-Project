@@ -25,7 +25,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "9.4s1.0"
+VERSION = "9.5s1.0"
 TOTAL_TIMESTEPS = 10_000_000
 CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -123,7 +123,7 @@ if __name__ == "__main__":
 	# 	print("TensorBoard not found in PATH")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
-	env = VecNormalize(env, norm_obs=False, norm_reward=True, clip_reward=10.0)
+	env = VecNormalize(env, norm_obs=True, clip_obs=10.0, gamma=0.985, norm_reward=True, clip_reward=10.0)
 
 	# Load existing model if available, otherwise create new one
 	modelExists = Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists()
