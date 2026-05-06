@@ -25,7 +25,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "8.4"
+VERSION = "9.0"
 TOTAL_TIMESTEPS = 100_000_000
 CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -148,8 +148,8 @@ if __name__ == "__main__":
 			batch_size=512,
 			n_epochs=10,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=float(3e-4),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
-			clip_range=float(0.2),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
+			learning_rate=get_linear_fn(3e-4, 1e-5, 1),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			clip_range=get_linear_fn(0.2,  0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			# target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 			tensorboard_log="./lab/tb_logs/",
 			policy_kwargs=dict(
 				net_arch=[256, 256],
-				log_std_init=-1,  # initialise std to ~0.37 instead of default 1.0
+				log_std_init=-4,  # initialise std to ~0.37 instead of default 1.0
 									# smaller initial actions = less chaos in early training
 			)
 		)

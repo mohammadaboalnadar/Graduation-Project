@@ -33,6 +33,13 @@ class UnitreeA1Env(gym.Env):
 		)
 		self.ctrl_min = self.model.actuator_ctrlrange[:, 0].copy()
 		self.ctrl_max = self.model.actuator_ctrlrange[:, 1].copy()
+		self.default_dof_pos = np.array([
+			-0.1, 0.8, -1.5,   # Front Right
+			0.1, 0.8, -1.5,   # Front Left
+			-0.1, 1.0, -1.5,   # Rear Right
+			0.1, 1.0, -1.5    # Rear Left
+		], dtype=np.float32)
+		self.action_scale = 0.25 # 0.25 deviation from default pose at max action
 
 		# ── Observation space ─────────────────────────────────────────
 		# 12 joint pos + 12 joint vel							= 24
@@ -110,7 +117,7 @@ class UnitreeA1Env(gym.Env):
 		action = np.clip(action, -1.0, 1.0)
 
 		# Map [-1, 1] to [ctrl_min, ctrl_max]
-		mapped_action = self.ctrl_min + (action + 1.0) * 0.5 * (self.ctrl_max - self.ctrl_min)
+		mapped_action = self.default_dof_pos + (action * self.action_scale)
 		
 		# Apply absolute target angles to the position actuators
 		self.data.ctrl[:] = mapped_action

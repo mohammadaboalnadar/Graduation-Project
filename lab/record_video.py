@@ -42,8 +42,8 @@ def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fp
 
 if __name__ == "__main__":
 	xml_path = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
-	modelVersion = "5.0"
-	exportTitle = "Slowmo 0.25x"
+	modelVersion = "9.0"
+	exportTitle = "Checkpoint_7M"
 	speedMultiplier = 0.25
 
 	from env import UnitreeA1Env
@@ -56,4 +56,5 @@ if __name__ == "__main__":
 		if response.lower() != "y":
 			print("Aborting video export.")
 			exit()
-	record_video(f"{modelsPath}/a1_walk_v{modelVersion}", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)
+	# record_video(f"{modelsPath}/a1_walk_v{modelVersion}", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)
+	record_video(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v9.0\7000000_steps.zip", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)
