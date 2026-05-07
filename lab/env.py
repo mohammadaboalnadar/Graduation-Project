@@ -40,18 +40,19 @@ class UnitreeA1Env(gym.Env):
 			0.1, 1.0, -1.5    # Rear Left
 		], dtype=np.float32)
 		self.action_scale = 0.5 # deviation from default pose at max action
+		self.last_action = np.zeros(n_actuators, dtype=np.float32)
 
 		# ── Observation space ─────────────────────────────────────────
 		# 12 joint pos + 12 joint vel							= 24
 		# base quaternion (4) + ang vel (3) + lin vel (3)		= 10
-		# foot contacts											=  4
 		# target velocity vector [vx, vy]						=  2
 		# target base quaternion								=  4
 		# target height											=  1
+		# last action 											= 12
 		# ─────────────────────────────────────────────────────────────
-		# Total													= 45
+		# Total													= 53
 		self.observation_space = spaces.Box(
-			low=-np.inf, high=np.inf, shape=(45,), dtype=np.float32
+			low=-np.inf, high=np.inf, shape=(53,), dtype=np.float32
 		)
 
 		# ── Command state (randomised each episode) ───────────────────
@@ -109,6 +110,8 @@ class UnitreeA1Env(gym.Env):
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
 		self.target_height = self.np_random.uniform(0.15, 0.4)
 
+		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
+
 		return self._get_obs(), {}
 
 	# ──────────────────────────────────────────────────────────────────
@@ -126,6 +129,8 @@ class UnitreeA1Env(gym.Env):
 		for _ in range(self.n_substeps):
 			mujoco.mj_step(self.model, self.data)
 		self._step_count += 1
+
+		self.last_action = action.copy()
 
 		obs                        = self._get_obs()
 		reward, components         = self._compute_reward(action)
@@ -170,27 +175,15 @@ class UnitreeA1Env(gym.Env):
 		base_quat     = self.data.qpos[3:7].copy()
 		base_ang_vel  = self.data.qvel[3:6].copy()
 		base_lin_vel  = self.data.qvel[0:3].copy()
-		foot_contacts = self._get_foot_contacts()
 
 		return np.concatenate([
 			joint_pos, joint_vel,
 			base_quat, base_ang_vel, base_lin_vel,
-			foot_contacts,
 			self.target_vel,   # [vx, vy]
 			self.target_quat,  # [w, x, y, z]
-			np.array([self.target_height], dtype=np.float32)
+			np.array([self.target_height], dtype=np.float32),
+			self.last_action,
 		]).astype(np.float32)
-
-	# ──────────────────────────────────────────────────────────────────
-	def _get_foot_contacts(self) -> np.ndarray:
-		contacts      = np.zeros(4, dtype=np.float32)
-		foot_id_list  = list(self._foot_geom_ids)
-		for i, geom_id in enumerate(foot_id_list):
-			for contact in self.data.contact:
-				if geom_id in (contact.geom1, contact.geom2):
-					contacts[i] = 1.0
-					break
-		return contacts
 
 	# ──────────────────────────────────────────────────────────────────
 	def _compute_reward(self, action: np.ndarray):
@@ -217,8 +210,6 @@ class UnitreeA1Env(gym.Env):
 		ang_vel         = self.data.qvel[3:6]
 		# ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
 		# vertical_penalty = -0.1 * vertical_vel
-		planted_feet = np.sum(self._get_foot_contacts())
-		foot_penalty = -0.1 * (4 - planted_feet)
 
 		torques = self.data.qfrc_actuator
 		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
@@ -229,16 +220,18 @@ class UnitreeA1Env(gym.Env):
 		# ── Height reward ─────────────────────────────────────────────
 		height_reward = float(np.exp(-100.0 * (self.data.qpos[2] - self.target_height) ** 2))
 
+		# ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
+		FR, FL, RR, RL = action[0:3], action[3:6], action[6:9], action[9:12]
+		symmetry_penalty = -0.1 * (np.sum(np.square(FR - RL)) + np.sum(np.square(FL - RR)))
+
 		components = {
 			"vel_direction": cos_sim,
 			"vel_magnitude": speed_reward,
 			"heading":        quat_similarity,
 			"height":         height_reward,
-			# "ang_vel":       ang_vel_penalty,
-			# "vertical":      vertical_penalty,
+			"symmetry":       symmetry_penalty,
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
-			"foot_penalty": foot_penalty,
 			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
 		}
 
@@ -247,7 +240,7 @@ class UnitreeA1Env(gym.Env):
 			# "vertical": components["vertical"],
 			"energy": components["energy"],
 			"fall": components["fall"],
-			"foot_penalty": components["foot_penalty"],
+			"symmetry": components["symmetry"],
 			"goal_product": components["goal_product"],
 			"alive": .5
 		}
