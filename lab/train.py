@@ -25,7 +25,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "9.6s2.0"
+VERSION = "9.6s3.0"
 TOTAL_TIMESTEPS = 10_000_000
 CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -172,11 +172,11 @@ if __name__ == "__main__":
 
 	try:
 		model.learn(
-			total_timesteps=TOTAL_TIMESTEPS, #- model.num_timesteps,
+			total_timesteps=TOTAL_TIMESTEPS - model.num_timesteps,
 			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,
-			reset_num_timesteps = True #not modelExists
+			reset_num_timesteps = not modelExists
 		)
 	except KeyboardInterrupt:
 		print("Training interrupted by user. Saving model...")

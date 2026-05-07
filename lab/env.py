@@ -107,7 +107,7 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		self.target_height = self.np_random.uniform(0.35, 0.45) #self.np_random.uniform(0.15, 0.35)
+		self.target_height = self.np_random.uniform(0.15, 0.4)
 
 		return self._get_obs(), {}
 
@@ -217,6 +217,8 @@ class UnitreeA1Env(gym.Env):
 		ang_vel         = self.data.qvel[3:6]
 		# ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
 		# vertical_penalty = -0.1 * vertical_vel
+		planted_feet = np.sum(self._get_foot_contacts())
+		foot_penalty = -0.2 * (4 - planted_feet)
 
 		torques = self.data.qfrc_actuator
 		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
@@ -236,6 +238,7 @@ class UnitreeA1Env(gym.Env):
 			# "vertical":      vertical_penalty,
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
+			"foot_penalty": foot_penalty,
 			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
 		}
 
@@ -244,6 +247,7 @@ class UnitreeA1Env(gym.Env):
 			# "vertical": components["vertical"],
 			"energy": components["energy"],
 			"fall": components["fall"],
+			"foot_penalty": components["foot_penalty"],
 			"goal_product": components["goal_product"],
 			"alive": .5
 		}
