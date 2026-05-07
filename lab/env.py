@@ -217,6 +217,8 @@ class UnitreeA1Env(gym.Env):
 		ang_vel         = self.data.qvel[3:6]
 		# ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
 		# vertical_penalty = -0.1 * vertical_vel
+		planted_feet = np.sum(self._get_foot_contacts())
+		foot_penalty = -0.1 * (4 - planted_feet)
 
 		torques = self.data.qfrc_actuator
 		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
@@ -236,14 +238,16 @@ class UnitreeA1Env(gym.Env):
 			# "vertical":      vertical_penalty,
 			"energy":        energy_penalty,
 			"fall":          fall_penalty,
+			"foot_penalty": foot_penalty,
 			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
 		}
 
 		rewards = {
 			# "ang_vel": components["ang_vel"],
 			# "vertical": components["vertical"],
-			# "energy": components["energy"],
+			"energy": components["energy"],
 			"fall": components["fall"],
+			"foot_penalty": components["foot_penalty"],
 			"goal_product": components["goal_product"],
 			"alive": .5
 		}
