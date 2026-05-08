@@ -130,12 +130,12 @@ class UnitreeA1Env(gym.Env):
 			mujoco.mj_step(self.model, self.data)
 		self._step_count += 1
 
-		self.last_action = action.copy()
-
 		obs                        = self._get_obs()
 		reward, components         = self._compute_reward(action)
 		terminated                 = self._is_fallen()
 		truncated                  = self._step_count >= self.max_episode_steps
+
+		self.last_action = action.copy()
 
 		return obs, reward, terminated, truncated, {"reward_components": components}
 
@@ -196,8 +196,10 @@ class UnitreeA1Env(gym.Env):
 		if actual_speed > 1e-4 and target_speed > 1e-4:
 			cos_sim = float(np.dot(actual_vel, self.target_vel) /
 							(actual_speed * target_speed))
-		else:
+		elif target_speed < 1e-4:
 			cos_sim = 1.0
+		else:
+			cos_sim = 0.0
 
 		# Magnitude: gaussian peak when speed matches target
 		speed_reward  = float(np.exp(-20.0 * (actual_speed - target_speed) ** 2))
@@ -214,6 +216,9 @@ class UnitreeA1Env(gym.Env):
 		torques = self.data.qfrc_actuator
 		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
 
+		# ── Action Rate penalty (encourage smoother actions) ─────────────────────────
+		action_rate_penalty = -0.05 * float(np.sum(np.square(action - self.last_action)))
+
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -100.0 if self._is_fallen() else 0.0
 
@@ -221,31 +226,29 @@ class UnitreeA1Env(gym.Env):
 		height_reward = float(np.exp(-100.0 * (self.data.qpos[2] - self.target_height) ** 2))
 
 		# ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
-		FR, FL, RR, RL = action[0:3], action[3:6], action[6:9], action[9:12]
-		symmetry_penalty = -0.1 * (np.sum(np.square(FR - RL)) + np.sum(np.square(FL - RR)))
+		# Extract the 12 physical joint positions
+		q = self.data.qpos[7:19].copy()
+		q_FR, q_FL, q_RR, q_RL = q[0:3], q[3:6], q[6:9], q[9:12]
+
+		# Invert right hips for mirroring
+		q_FR[0] *= -1
+		q_RR[0] *= -1
+
+		# Calculate physical lateral symmetry
+		symmetry_penalty = -0.1 * (np.sum(np.square(q_FR - q_FL)) + np.sum(np.square(q_RR - q_RL)))
 
 		components = {
 			"vel_direction": cos_sim,
 			"vel_magnitude": speed_reward,
 			"heading":        quat_similarity,
+			"energy":        energy_penalty,
+			"action_rate":   action_rate_penalty,
+			"fall":          fall_penalty,
 			"height":         height_reward,
 			"symmetry":       symmetry_penalty,
-			"energy":        energy_penalty,
-			"fall":          fall_penalty,
-			"goal_product":  cos_sim * speed_reward * quat_similarity * height_reward * 4,
 		}
 
-		rewards = {
-			# "ang_vel": components["ang_vel"],
-			# "vertical": components["vertical"],
-			"energy": components["energy"],
-			"fall": components["fall"],
-			"symmetry": components["symmetry"],
-			"goal_product": components["goal_product"],
-			"alive": .5
-		}
-
-		return float(sum(rewards.values())), components
+		return float(sum(components.values())), components
 
 	# ──────────────────────────────────────────────────────────────────
 	def _is_fallen(self) -> bool:
