@@ -108,7 +108,7 @@ class UnitreeA1Env(gym.Env):
 		# self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		# self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		# self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		self.target_height = self.np_random.uniform(0.15, 0.4)
+		self.target_height = self.np_random.uniform(0.15, 0.34)
 
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 
