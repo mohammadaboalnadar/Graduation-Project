@@ -217,7 +217,7 @@ class UnitreeA1Env(gym.Env):
 		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
 
 		# ── Action Rate penalty (encourage smoother actions) ─────────────────────────
-		action_rate_penalty = -0.05 * float(np.sum(np.square(action - self.last_action)))
+		action_rate_penalty = -5e-3 * float(np.sum(np.square(action - self.last_action)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -100.0 if self._is_fallen() else 0.0
