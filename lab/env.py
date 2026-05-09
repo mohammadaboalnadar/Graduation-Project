@@ -234,8 +234,15 @@ class UnitreeA1Env(gym.Env):
 		q_FR[0] *= -1
 		q_RR[0] *= -1
 
-		# Calculate physical lateral symmetry
-		symmetry_penalty = -0.1 * (np.sum(np.square(q_FR - q_FL)) + np.sum(np.square(q_RR - q_RL)))
+		# Calculate symmetry for every pair of legs
+		symmetry_penalty = -0.2 * (
+			float(np.sum(np.square(q_FR - q_FL))) +
+			float(np.sum(np.square(q_FR - q_RR))) +
+			float(np.sum(np.square(q_FR - q_RL))) +
+			float(np.sum(np.square(q_FL - q_RR))) +
+			float(np.sum(np.square(q_FL - q_RL))) +
+			float(np.sum(np.square(q_RR - q_RL)))
+		)
 
 		components = {
 			"vel_direction": cos_sim,
