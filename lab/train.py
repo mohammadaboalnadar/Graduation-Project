@@ -25,8 +25,8 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "11.2s1.0"
-TOTAL_TIMESTEPS = 20_000_000
+VERSION = "11.3s1.0"
+TOTAL_TIMESTEPS = 40_000_000
 CHECKPOINT_FREQ = 1_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
 N_ENVS = 8
@@ -132,11 +132,11 @@ if __name__ == "__main__":
 		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 
-		model.learning_rate = get_linear_fn(1e-5, 1e-5, 1)
-		model.clip_range    = get_linear_fn(0.05,  0.05, 1)
+		# model.learning_rate = get_linear_fn(1e-5, 1e-5, 1)
+		# model.clip_range    = get_linear_fn(0.2,  0.2, 1)
 		# model.learning_rate = float(5e-5)
 		# model.target_kl     = None
-		# model.ent_coef	  = 0.005
+		model.ent_coef	  = 0.005
 	else:
 		print("Creating new model")
 		model = PPO(
@@ -148,8 +148,8 @@ if __name__ == "__main__":
 			batch_size=512,
 			n_epochs=4,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=get_linear_fn(3e-4, 1e-5, 1),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
-			clip_range=get_linear_fn(0.2,  0.2, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
+			# learning_rate=get_linear_fn(3e-4, 1e-5, 1),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			# clip_range=get_linear_fn(0.2,  0.2, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			# target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
@@ -172,7 +172,7 @@ if __name__ == "__main__":
 
 	try:
 		model.learn(
-			total_timesteps=TOTAL_TIMESTEPS,# - model.num_timesteps,
+			total_timesteps=TOTAL_TIMESTEPS - model.num_timesteps,
 			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,

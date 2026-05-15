@@ -214,10 +214,10 @@ class UnitreeA1Env(gym.Env):
 		# vertical_penalty = -0.1 * vertical_vel
 
 		torques = self.data.qfrc_actuator
-		energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
+		energy_penalty   = 0 #-1e-5 * float(np.sum(np.square(torques)))
 
 		# ── Action Rate penalty (encourage smoother actions) ─────────────────────────
-		action_rate_penalty = -5e-3 * float(np.sum(np.square(action - self.last_action)))
+		action_rate_penalty = 0 # -5e-3 * float(np.sum(np.square(action - self.last_action)))
 
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -100.0 if self._is_fallen() else 0.0
@@ -236,12 +236,8 @@ class UnitreeA1Env(gym.Env):
 
 		# Calculate symmetry for every pair of legs
 		symmetry_penalty = -0.2 * (
-			float(np.sum(np.square(q_FR - q_FL))) +
-			float(np.sum(np.square(q_FR - q_RR))) +
 			float(np.sum(np.square(q_FR - q_RL))) +
-			float(np.sum(np.square(q_FL - q_RR))) +
-			float(np.sum(np.square(q_FL - q_RL))) +
-			float(np.sum(np.square(q_RR - q_RL)))
+			float(np.sum(np.square(q_FL - q_RR)))
 		)
 
 		components = {
