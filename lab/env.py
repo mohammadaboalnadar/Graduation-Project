@@ -181,7 +181,7 @@ class UnitreeA1Env(gym.Env):
 	# ──────────────────────────────────────────────────────────────────
 
 	def gaus(self, x: float, *alpha: float) -> float:
-		return np.sum([np.exp(-a*x**2) for a in alpha])
+		return np.sum([np.exp(-a*x**2) for a in alpha]) / len(alpha)
 
 	def _compute_reward(self, action: np.ndarray):
 		# Get actual velocity in world frame and transform to robot frame
@@ -207,7 +207,7 @@ class UnitreeA1Env(gym.Env):
 		else:
 			cos_sim = 1.0
 
-		cos_sim = cos_sim// 2.0 + 0.5  # rescale from [-1, 1] to [0, 1]
+		cos_sim = cos_sim / 2.0 + 0.5  # rescale from [-1, 1] to [0, 1]
 
 		# Magnitude: gaussian peak when speed matches target
 		speed_reward = self.gaus(actual_speed - ref_speed, 10.0, 1.0)
@@ -222,8 +222,8 @@ class UnitreeA1Env(gym.Env):
 		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 1000.0, 10.0)
 
 		# ── Stability penalties ───────────────────────────────────────
-		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos)))
-		action_rate_penalty = -float(np.sum(np.square(action - self.last_action)))
+		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos))) * 0.3
+		action_rate_penalty = -float(np.sum(np.square(action - self.last_action))) * 0.1
 		vertical_vel    = -float(self.data.qvel[2])**2
 		pitch_error, roll_error = -pitch**2, -roll**2
 
