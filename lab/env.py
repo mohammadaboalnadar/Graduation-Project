@@ -98,17 +98,20 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		# speed         = self.np_random.uniform(0, 1.2)
-		# direction     = self.np_random.uniform(-np.pi, np.pi)
-		# self.target_vel   = np.array([
-		# 	speed * np.cos(direction),
-		# 	speed * np.sin(direction),
-		# ], dtype=np.float32)
+		if self.np_random.choice([True, False]):
+			speed         = self.np_random.uniform(0, 1.2)
+			direction     = self.np_random.uniform(-np.pi, np.pi)
+			self.target_vel   = np.array([
+				speed * np.cos(direction),
+				speed * np.sin(direction),
+			], dtype=np.float32)
+		else:
+			self.target_vel = np.zeros(2, dtype=np.float32)
 		self.target_yaw   = self.np_random.uniform(-np.pi, np.pi)
 		self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
 		self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
 		self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		self.target_height = self.np_random.uniform(0.15, 0.34)
+		self.target_height = self.np_random.uniform(0.2, 0.26)
 
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 
