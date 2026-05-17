@@ -43,25 +43,22 @@ class UnitreeA1Env(gym.Env):
 		self.last_action = np.zeros(n_actuators, dtype=np.float32)
 
 		# ── Observation space ─────────────────────────────────────────
+		# Base Linear Velocities								=  3
+		# Base Rotational Velocities							=  3
+		# Orientation Angles (roll, pitch)						=  2
 		# 12 joint pos + 12 joint vel							= 24
-		# base quaternion (4) + ang vel (3) + lin vel (3)		= 10
-		# target velocity vector [vx, vy]						=  2
-		# target base quaternion								=  4
-		# target height											=  1
 		# last action 											= 12
+		# reference velocity vector [vx, vy, wz]				=  3
+		# reference height										=  1
 		# ─────────────────────────────────────────────────────────────
-		# Total													= 53
+		# Total													= 48
 		self.observation_space = spaces.Box(
-			low=-np.inf, high=np.inf, shape=(53,), dtype=np.float32
+			low=-np.inf, high=np.inf, shape=(48,), dtype=np.float32
 		)
 
 		# ── Command state (randomised each episode) ───────────────────
-		self.target_vel     = np.zeros(2, dtype=np.float32)  # [vx, vy] m/s
-		self.target_yaw     = 0.0                            # radians
-		self.target_pitch   = 0.0    
-		self.target_roll    = 0.0
-		self.target_quat	= np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)  # w, x, y, z
-		self.target_height  = 0.35
+		self.ref_vel     = np.zeros(3, dtype=np.float32)  # [vx, vy, wz] [m/s, m/s, rad/s]
+		self.ref_height  = 0.35
 
 		# ── Rendering setup ───────────────────────────────────────────
 		self.render_mode = render_mode
@@ -70,17 +67,13 @@ class UnitreeA1Env(gym.Env):
 		self._scene    = None
 
 	# ──────────────────────────────────────────────────────────────────
-	def set_commands(self, vx: float, vy: float,
-					yaw: float, pitch: float = 0.0, roll: float = 0.0):
+	def set_commands(self, vx: float, vy: float, wz: float, height: float):
 		"""
 		Override commands at runtime without resetting the episode.
 		Call this from your external controller to change targets on the fly.
 		"""
-		self.target_vel  = np.array([vx, vy], dtype=np.float32)
-		self.target_yaw  = float(yaw)
-		self.target_pitch = float(pitch)
-		self.target_roll = float(roll)
-		self.target_quat = self._quat_from_yaw_pitch_roll(yaw, pitch, roll)
+		self.ref_vel  = np.array([vx, vy, wz], dtype=np.float32)
+		self.ref_height = height
 
 	# ──────────────────────────────────────────────────────────────────
 	def reset(self, seed=None, options=None):
@@ -88,9 +81,6 @@ class UnitreeA1Env(gym.Env):
 
 		mujoco.mj_resetDataKeyframe(self.model, self.data, 0)
 		# Randomise starting yaw so the robot learns from any orientation
-		start_yaw = self.np_random.uniform(-np.pi, np.pi)
-		cy, sy = np.cos(start_yaw / 2), np.sin(start_yaw / 2)
-		self.data.qpos[3:7] = [cy, 0.0, 0.0, sy]  # w, x, y, z — pure yaw quaternion
 		self.data.qpos[:] += self.np_random.uniform(-0.01, 0.01, self.model.nq)
 		self.data.qvel[:] += self.np_random.uniform(-0.01, 0.01, self.model.nv)
 		mujoco.mj_forward(self.model, self.data)
@@ -101,18 +91,16 @@ class UnitreeA1Env(gym.Env):
 		if self.np_random.choice([True, False]):
 			speed         = self.np_random.uniform(0, 1.2)
 			direction     = self.np_random.uniform(-np.pi, np.pi)
-			self.target_vel   = np.array([
+			self.ref_vel   = np.array([
 				speed * np.cos(direction),
 				speed * np.sin(direction),
+				0
 			], dtype=np.float32)
 		else:
-			self.target_vel = np.zeros(2, dtype=np.float32)
-		self.target_yaw   = self.np_random.uniform(-np.pi, np.pi)
-		self.target_pitch = self.np_random.uniform(-0.3, 0.3)  # ~±17 degrees
-		self.target_roll  = self.np_random.uniform(-0.2, 0.2)  # ~±11 degrees
-		self.target_quat  = self._quat_from_yaw_pitch_roll(self.target_yaw, self.target_pitch, self.target_roll)
-		self.target_height = self.np_random.uniform(0.2, 0.26)
-
+			self.ref_vel = np.zeros(3, dtype=np.float32)
+		
+		self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
+		self.ref_height = self.np_random.uniform(0.2, 0.26)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 
 		return self._get_obs(), {}
@@ -173,96 +161,120 @@ class UnitreeA1Env(gym.Env):
 
 	# ──────────────────────────────────────────────────────────────────
 	def _get_obs(self) -> np.ndarray:
-		joint_pos     = self.data.qpos[7:].copy()
-		joint_vel     = self.data.qvel[6:].copy()
-		base_quat     = self.data.qpos[3:7].copy()
-		base_ang_vel  = self.data.qvel[3:6].copy()
-		base_lin_vel  = self.data.qvel[0:3].copy()
+		joint_pos     		= self.data.qpos[7:].copy()
+		joint_vel     		= self.data.qvel[6:].copy()
+		raw, pitch, roll    = self._get_euler()
+		base_ang_vel  		= self.data.qvel[3:6].copy()
+		base_lin_vel  		= self.data.qvel[0:3].copy()
 
 		return np.concatenate([
+			base_lin_vel,
+			base_ang_vel,
+			np.array([roll, pitch], dtype=np.float32),
 			joint_pos, joint_vel,
-			base_quat, base_ang_vel, base_lin_vel,
-			self.target_vel,   # [vx, vy]
-			self.target_quat,  # [w, x, y, z]
-			np.array([self.target_height], dtype=np.float32),
 			self.last_action,
+			
+			self.ref_vel,   # [vx, vy, wz]
+			np.array([self.ref_height], dtype=np.float32),
 		]).astype(np.float32)
 
 	# ──────────────────────────────────────────────────────────────────
+
+	def gaus(self, x: float, *alpha: float) -> float:
+		return np.sum([np.exp(-a*x**2) for a in alpha])
+
 	def _compute_reward(self, action: np.ndarray):
-		actual_vel   = self.data.qvel[0:2]          # [vx, vy]
+		# Get actual velocity in world frame and transform to robot frame
+		world_vel   = self.data.qvel[0:2]           # [vx, vy] in world frame
+		yaw, pitch, roll = self._get_euler()
+		cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
+		actual_vel = np.array([
+			world_vel[0] * cos_yaw + world_vel[1] * sin_yaw,
+			-world_vel[0] * sin_yaw + world_vel[1] * cos_yaw
+		], dtype=np.float32)  # [vx, vy] in robot frame
+		
+		ref_vel    = self.ref_vel[0:2]              # [vx, vy] (already robot frame)
 		actual_speed = np.linalg.norm(actual_vel)
-		target_speed = np.linalg.norm(self.target_vel)
+		ref_speed = np.linalg.norm(ref_vel)
 
 		# ── Velocity reward ───────────────────────────────────────────
 		# Direction: cosine similarity between actual and target velocity
-		if actual_speed > 1e-4 and target_speed > 1e-4:
-			cos_sim = float(np.dot(actual_vel, self.target_vel) /
-							(actual_speed * target_speed))
-		elif target_speed < 1e-4:
-			cos_sim = 1.0
+		if ref_speed > 1e-4:
+			if actual_speed > 1e-4:
+				cos_sim = float(np.dot(actual_vel, ref_vel) / (actual_speed * ref_speed))
+			else:
+				cos_sim = 0.0
 		else:
-			cos_sim = 0.0
+			cos_sim = 1.0
+
+		cos_sim = cos_sim// 2.0 + 0.5  # rescale from [-1, 1] to [0, 1]
 
 		# Magnitude: gaussian peak when speed matches target
-		speed_reward  = float(np.exp(-20.0 * (actual_speed - target_speed) ** 2))
+		speed_reward = self.gaus(actual_speed - ref_speed, 10.0, 1.0)
 
-		# ── Heading rewards ───────────────────────────────────────────
-		quat_similarity = float(np.dot(self.data.qpos[3:7], self.target_quat) ** 2)
+		# Angular velocity:
+		ref_angular_vel = self.ref_vel[2]  # target yaw rate
+		actual_angular_vel = self.data.qvel[5]  # actual yaw rate
 
-		# ── Stability penalties ───────────────────────────────────────
-		vertical_vel    = abs(float(self.data.qvel[2]))
-		ang_vel         = self.data.qvel[3:6]
-		# ang_vel_penalty = -0.05 * float(np.sum(np.square(ang_vel)))
-		# vertical_penalty = -0.1 * vertical_vel
-
-		torques = self.data.qfrc_actuator
-		energy_penalty   = 0 #-1e-5 * float(np.sum(np.square(torques)))
-
-		# ── Action Rate penalty (encourage smoother actions) ─────────────────────────
-		action_rate_penalty = 0 # -5e-3 * float(np.sum(np.square(action - self.last_action)))
-
-		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -100.0 if self._is_fallen() else 0.0
+		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0)
 
 		# ── Height reward ─────────────────────────────────────────────
-		height_reward = float(np.exp(-100.0 * (self.data.qpos[2] - self.target_height) ** 2))
+		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 1000.0, 10.0)
 
-		# ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
-		# Extract the 12 physical joint positions
-		q = self.data.qpos[7:19].copy()
-		q_FR, q_FL, q_RR, q_RL = q[0:3], q[3:6], q[6:9], q[9:12]
+		# ── Stability penalties ───────────────────────────────────────
+		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos)))
+		action_rate_penalty = -float(np.sum(np.square(action - self.last_action)))
+		vertical_vel    = -float(self.data.qvel[2])**2
+		pitch_error, roll_error = -pitch**2, -roll**2
 
-		# Invert right hips for mirroring
-		q_FR[0] *= -1
-		q_RR[0] *= -1
+		# torques = self.data.qfrc_actuator
+		# energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
 
-		# Calculate symmetry for every pair of legs
-		symmetry_penalty = -0.2 * (
-			float(np.sum(np.square(q_FR - q_RL))) +
-			float(np.sum(np.square(q_FL - q_RR)))
-		)
+		# ── Fall penalty ──────────────────────────────────────────────
+		fall_penalty = -1 if self._is_fallen() else 0.0
+
+		# # ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
+		# # Extract the 12 physical joint positions
+		# q = self.data.qpos[7:19].copy()
+		# q_FR, q_FL, q_RR, q_RL = q[0:3], q[3:6], q[6:9], q[9:12]
+
+		# # Invert right hips for mirroring
+		# q_FR[0] *= -1
+		# q_RR[0] *= -1
+
+		# # Calculate symmetry for every pair of legs
+		# symmetry_penalty = -0.2 * (
+		# 	float(np.sum(np.square(q_FR - q_RL))) +
+		# 	float(np.sum(np.square(q_FL - q_RR)))
+		# )
 
 		components = {
-			"vel_direction": cos_sim,
-			"vel_magnitude": speed_reward,
-			"heading":        quat_similarity,
-			"energy":        energy_penalty,
-			"action_rate":   action_rate_penalty,
-			"fall":          fall_penalty,
-			"height":         height_reward,
-			"symmetry":       symmetry_penalty,
+			"velocity_direction":		1.0 * cos_sim,
+			"velocity_magnitude":		1.0 * speed_reward,
+			"angular_velocity":			1.0 * angular_vel_reward,
+			"height":					1.0 * height_reward,
+			"pose_similarity":			1.0 * pose_similarity,
+			"action_rate":				1.0 * action_rate_penalty,
+			"vertical_velocity":		1.0 * vertical_vel,
+			"pitch_error":				1.0 * pitch_error,
+			"roll_error": 				1.0 * roll_error,
+			# "energy_penalty": 		1.0 * energy_penalty,
+			# "symmetry_penalty": 		1.0 * symmetry_penalty
+			"fall_penalty": 			100.0 * fall_penalty,
 		}
 
 		return float(sum(components.values())), components
 
 	# ──────────────────────────────────────────────────────────────────
 	def _is_fallen(self) -> bool:
+		yaw, pitch, roll = self._get_euler()
+		if abs(pitch) > np.radians(45) or abs(roll) > np.radians(45):
+			return True
+		z = self.data.qpos[2]
+		if z < 0.1 or z > 0.5:
+			return True
+		
 		return False
-		# base_height  = self.data.qpos[2]
-		# base_quat    = self.data.qpos[3:7]
-		# uprightness  = base_quat[0] ** 2
-		# return bool(base_height < 0.12 or uprightness < 0.5)
 
 	# ──────────────────────────────────────────────────────────────────
 	def render(self):
