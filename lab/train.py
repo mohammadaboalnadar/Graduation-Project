@@ -25,7 +25,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "12.1"
+VERSION = "12.2"
 TOTAL_TIMESTEPS = 200_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 			verbose=0,
 			tensorboard_log="./lab/tb_logs/",
 			policy_kwargs=dict(
-				net_arch=[256, 256],
+				net_arch=[512, 256, 128, 64],
 				# log_std_init=-4,  # initialise std to ~0.37 instead of default 1.0
 									# smaller initial actions = less chaos in early training
 			)

@@ -4,7 +4,7 @@ from env import UnitreeA1Env
 import numpy as np
 import time
 
-VERSION = "11.3s2.0"
+VERSION = "12.2"
 SPEED_MULTIPLIER = 0.5  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model
@@ -40,7 +40,7 @@ while raw_env._viewer is not None and raw_env._viewer.is_running():  # Keep runn
 		print(f"steps={step_count} | elapsed={elapsed:.2f}s | expected={expected:.2f}s | ratio={elapsed/expected:.3f}")
 	
 	if step_count % 10 == 0:
-		print(f"Target Height: {raw_env.target_height:.3f} | Actual Height: {raw_env.data.qpos[2]:.3f}")
+		print(f"Target Height: {raw_env.ref_height:.3f} | Actual Height: {raw_env.data.qpos[2]:.3f}")
 
 	while time.perf_counter() - t0 < dt / SPEED_MULTIPLIER:
 		time.sleep(0)  # Yield to other processes to prevent CPU hogging

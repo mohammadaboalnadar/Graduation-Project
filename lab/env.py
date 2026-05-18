@@ -320,37 +320,73 @@ class UnitreeA1Env(gym.Env):
 		base_pos = self.data.qpos[0:3].copy()
 
 		# ── Target velocity arrow (green) ────────────────────────────────
-		vel_magnitude = np.linalg.norm(self.target_vel)
-		if vel_magnitude > 1e-4:
-			vel_dir_3d = np.array([
-				self.target_vel[0] / vel_magnitude,
-				self.target_vel[1] / vel_magnitude,
-				0.0
-			])
-			self._add_arrow(
-				start  = base_pos + np.array([0, 0, 0.1]),  # above the robot
-				dir    = vel_dir_3d,
-				length = float(vel_magnitude),              # scale length to speed
-				radius = 0.01,
-				rgba   = np.array([0.0, 1.0, 0.0, 0.8], dtype=np.float32)  # green
-			)
-
-		# ── Target heading arrow (blue) ───────────────────────────────────
-		heading_dir = np.array([
-			np.cos(self.target_yaw),
-			np.sin(self.target_yaw),
-			np.tan(self.target_pitch)   # z component encodes pitch
-		])
-		heading_dir /= np.linalg.norm(heading_dir)
+		
+		yaw, pitch, roll = self._get_euler()
+		cos_yaw, sin_yaw = np.cos(yaw), np.sin(yaw)
+		world_ref_vel = np.array([
+			self.ref_vel[0] * cos_yaw - self.ref_vel[1] * sin_yaw,
+			self.ref_vel[0] * sin_yaw + self.ref_vel[1] * cos_yaw
+		], dtype=np.float32)  # [vx, vy] in robot frame
 		self._add_arrow(
-			start  = base_pos + np.array([0, 0, 0.1]),
-			dir    = heading_dir,
-			length = 0.5,
+			start  = base_pos + np.array([0, 0, 0.1]),  # above the robot
+			dir    = np.array([
+				world_ref_vel[0],
+				world_ref_vel[1],
+				0.0
+			]),
 			radius = 0.01,
-			rgba   = np.array([0.0, 0.4, 1.0, 0.8], dtype=np.float32)  # blue
+			rgba   = np.array([0.0, 1.0, 0.0, 0.4], dtype=np.float32)  # green
 		)
 
-	def _add_arrow(self, start: np.ndarray, dir: np.ndarray, length: float, radius: float, rgba: np.ndarray):
+		# ── Actual velocity arrow (red) ─────────────────────────────────────
+		world_vel   = self.data.qvel[0:2].copy()
+		self._add_arrow(
+			start  = base_pos + np.array([0, 0, 0.1]),  # above the robot
+			dir    = np.array([
+				world_vel[0],
+				world_vel[1],
+				0.0
+			]),
+			radius = 0.01,
+			rgba   = np.array([1.0, 0.0, 0.0, 0.4], dtype=np.float32)  # red
+		)
+
+		# ── Target ang_vel arrow (blue) ───────────────────────────────────
+		body_right_vector = np.array([-sin_yaw, cos_yaw, 0], dtype=np.float32)  # points to the robot's right side
+		heading_dir = body_right_vector / np.linalg.norm(body_right_vector)
+		self._add_arrow(
+			start  = base_pos + np.array([0, 0, 0.15]),
+			dir    = heading_dir * self.ref_vel[2],  # point left or right based on sign of target yaw rate
+			radius = 0.01,
+			rgba   = np.array([0.0, 0.0, 1.0, 0.4], dtype=np.float32)  # blue
+		)
+
+		# ── Actual ang_vel arrow (red) ─────────────────────────────────────────────
+		actual_angular_vel = self.data.qvel[5]  # actual yaw rate
+		self._add_arrow(
+			start  = base_pos + np.array([0, 0, 0.15]),
+			dir    = heading_dir * actual_angular_vel,  # point left or right based on sign of actual yaw rate
+			radius = 0.01,
+			rgba   = np.array([1.0, 0.0, 0.0, 0.4], dtype=np.float32)  # red
+		)
+
+		# ── Target height marker (cyan) ─────────────────────────────────────────────
+		self._add_arrow(
+			start  = np.array([base_pos[0] - 0.02, base_pos[1] - 0.32, 0], dtype=np.float32),
+			dir    = np.array([0, 0, self.ref_height * 2], dtype=np.float32),
+			radius = 0.01,
+			rgba   = np.array([0.0, 0.0, 1.0, 0.4], dtype=np.float32)  # blue
+		)
+
+		# ── Actual height marker (red) ─────────────────────────────────────────────
+		self._add_arrow(
+			start  = np.array([base_pos[0], base_pos[1] - 0.3, 0], dtype=np.float32),
+			dir    = np.array([0, 0, base_pos[2] * 2], dtype=np.float32),
+			radius = 0.01,
+			rgba   = np.array([1.0, 0.0, 0.0, 0.4], dtype=np.float32)  # red
+		)
+
+	def _add_arrow(self, start: np.ndarray, dir: np.ndarray, length: float = 1, radius: float = 0.01, rgba: np.ndarray = np.array([1.0, 0.0, 0.0, 0.4], dtype=np.float32)):
 		scene = self._scene
 		if scene.ngeom >= scene.maxgeom:
 			return
