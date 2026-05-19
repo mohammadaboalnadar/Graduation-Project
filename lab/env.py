@@ -90,7 +90,7 @@ class UnitreeA1Env(gym.Env):
 		# Randomise commands each episode so the robot generalises
 		if self.np_random.choice([True, False]):
 			speed         = self.np_random.uniform(0, 1.2)
-			direction     = self.np_random.uniform(-np.pi, np.pi)
+			direction     = 0 #self.np_random.uniform(-np.pi, np.pi)
 			self.ref_vel   = np.array([
 				speed * np.cos(direction),
 				speed * np.sin(direction),
@@ -219,7 +219,7 @@ class UnitreeA1Env(gym.Env):
 		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0)
 
 		# ── Height reward ─────────────────────────────────────────────
-		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 1000.0, 10.0)
+		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 2000.0, 200.0)
 
 		# ── Stability penalties ───────────────────────────────────────
 		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos))) * 0.3
@@ -253,11 +253,11 @@ class UnitreeA1Env(gym.Env):
 			"velocity_magnitude":		1.0 * speed_reward,
 			"angular_velocity":			1.0 * angular_vel_reward,
 			"height":					1.0 * height_reward,
-			"pose_similarity":			1.0 * pose_similarity,
-			"action_rate":				1.0 * action_rate_penalty,
+			"pose_similarity":			0.5 * pose_similarity,
+			"action_rate":				0.1 * action_rate_penalty,
 			"vertical_velocity":		1.0 * vertical_vel,
-			"pitch_error":				1.0 * pitch_error,
-			"roll_error": 				1.0 * roll_error,
+			"pitch_error":				2.0 * pitch_error,
+			"roll_error": 				2.0 * roll_error,
 			# "energy_penalty": 		1.0 * energy_penalty,
 			# "symmetry_penalty": 		1.0 * symmetry_penalty
 			"fall_penalty": 			100.0 * fall_penalty,
