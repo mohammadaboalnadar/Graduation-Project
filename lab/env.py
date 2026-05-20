@@ -247,7 +247,7 @@ class UnitreeA1Env(gym.Env):
 		q_RR[0] *= -1
 
 		# Calculate symmetry for every pair of legs
-		diagonal_symmetry_penalty = -0.2 * (
+		diagonal_symmetry_penalty = -(
 			float(np.sum(np.square(q_FR - q_RL))) +
 			float(np.sum(np.square(q_FL - q_RR)))
 		)
@@ -270,7 +270,7 @@ class UnitreeA1Env(gym.Env):
 			"pitch_error":				1.0 * pitch_error,
 			"roll_error": 				1.0 * roll_error,
 			# "energy_penalty": 		1.0 * energy_penalty,
-			"symmetry_penalty": 		5.0 * symmetry_penalty,
+			"symmetry_penalty": 		10.0 * symmetry_penalty,
 			"fall_penalty": 			100.0 * fall_penalty,
 		}
 
