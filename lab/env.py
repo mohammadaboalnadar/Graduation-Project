@@ -220,7 +220,7 @@ class UnitreeA1Env(gym.Env):
 		ref_angular_vel = self.ref_vel[2]  # target yaw rate
 		actual_angular_vel = self.data.qvel[5]  # actual yaw rate
 
-		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0)
+		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0, 1.0)
 
 		# ── Height reward ─────────────────────────────────────────────
 		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 2000.0, 200.0)
@@ -261,7 +261,7 @@ class UnitreeA1Env(gym.Env):
 		components = {
 			"velocity_direction":		2.0 * cos_sim,
 			"velocity_magnitude":		10.0 * speed_reward,
-			"angular_velocity":			1.0 * angular_vel_reward,
+			"angular_velocity":			10.0 * angular_vel_reward,
 			"height":					1.0 * height_reward,
 			"pose_similarity":			0.05 * pose_similarity,
 			"action_rate":				0.05 * action_rate_penalty,
