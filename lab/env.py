@@ -258,12 +258,12 @@ class UnitreeA1Env(gym.Env):
 		# symmetry_penalty = max(diagonal_symmetry_penalty, horizontal_symmetry_penalty)
 
 		components = {
-			"velocity_direction":		1.0 * cos_sim,
-			"velocity_magnitude":		1.0 * speed_reward,
+			"velocity_direction":		2.0 * cos_sim,
+			"velocity_magnitude":		2.0 * speed_reward,
 			"angular_velocity":			1.0 * angular_vel_reward,
-			"height":					0.5 * height_reward,
-			"pose_similarity":			0.2 * pose_similarity,
-			"action_rate":				0.2 * action_rate_penalty,
+			"height":					1.0 * height_reward,
+			"pose_similarity":			0.05 * pose_similarity,
+			"action_rate":				0.05 * action_rate_penalty,
 			"vertical_velocity":		1.0 * vertical_vel,
 			"pitch_error":				1.0 * pitch_error,
 			"roll_error": 				1.0 * roll_error,
