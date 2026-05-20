@@ -87,22 +87,23 @@ class UnitreeA1Env(gym.Env):
 
 		self._step_count = 0
 
-		# Randomise commands each episode so the robot generalises
-		if self.np_random.choice([True, False]):
-			speed         = self.np_random.uniform(0, 5)
-			direction     = 0 #self.np_random.uniform(-np.pi, np.pi)
-			self.ref_vel   = np.array([
-				speed * np.cos(direction),
-				speed * np.sin(direction),
-				0
-			], dtype=np.float32)
-		else:
-			self.ref_vel = np.zeros(3, dtype=np.float32)
+		# # Randomise commands each episode so the robot generalises
+		# if self.np_random.choice([True, False]):
+		# 	speed         = self.np_random.uniform(0, 5)
+		# 	direction     = 0 #self.np_random.uniform(-np.pi, np.pi)
+		# 	self.ref_vel   = np.array([
+		# 		speed * np.cos(direction),
+		# 		speed * np.sin(direction),
+		# 		0
+		# 	], dtype=np.float32)
+		# else:
+		# 	self.ref_vel = np.zeros(3, dtype=np.float32)
 		
-		if self.np_random.choice([True, False]):
-			self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
+		# if self.np_random.choice([True, False]):
+		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
+		self.ref_vel = np.array([5,0,0], dtype=np.float32) # --- IGNORE ---
 		
-		self.ref_height = self.np_random.uniform(0.2, 0.3)
+		# self.ref_height = self.np_random.uniform(0.2, 0.3)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 
 		return self._get_obs(), {}
@@ -213,7 +214,7 @@ class UnitreeA1Env(gym.Env):
 		cos_sim = cos_sim / 2.0 + 0.5  # rescale from [-1, 1] to [0, 1]
 
 		# Magnitude: gaussian peak when speed matches target
-		speed_reward = self.gaus(actual_speed - ref_speed, 10.0, 1.0)
+		speed_reward = self.gaus(actual_speed - ref_speed, 10.0, 0.1)
 
 		# Angular velocity:
 		ref_angular_vel = self.ref_vel[2]  # target yaw rate
@@ -259,7 +260,7 @@ class UnitreeA1Env(gym.Env):
 
 		components = {
 			"velocity_direction":		2.0 * cos_sim,
-			"velocity_magnitude":		2.0 * speed_reward,
+			"velocity_magnitude":		10.0 * speed_reward,
 			"angular_velocity":			1.0 * angular_vel_reward,
 			"height":					1.0 * height_reward,
 			"pose_similarity":			0.05 * pose_similarity,
