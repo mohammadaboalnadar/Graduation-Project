@@ -260,7 +260,7 @@ class UnitreeA1Env(gym.Env):
 
 		components = {
 			"velocity_direction":		2.0 * cos_sim,
-			"velocity_magnitude":		10.0 * speed_reward,
+			"velocity_magnitude":		100.0 * speed_reward,
 			"angular_velocity":			10.0 * angular_vel_reward,
 			"height":					1.0 * height_reward,
 			"pose_similarity":			0.05 * pose_similarity,
@@ -269,7 +269,7 @@ class UnitreeA1Env(gym.Env):
 			"pitch_error":				1.0 * pitch_error,
 			"roll_error": 				1.0 * roll_error,
 			# "energy_penalty": 		1.0 * energy_penalty,
-			"symmetry_penalty": 		1.0 * symmetry_penalty,
+			"symmetry_penalty": 		10.0 * symmetry_penalty,
 			"fall_penalty": 			100.0 * fall_penalty,
 		}
 
