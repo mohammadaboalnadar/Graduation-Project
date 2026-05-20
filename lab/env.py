@@ -237,26 +237,26 @@ class UnitreeA1Env(gym.Env):
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -1 if self._is_fallen() else 0.0
 
-		# # ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
-		# # Extract the 12 physical joint positions
-		# q = self.data.qpos[7:19].copy()
-		# q_FR, q_FL, q_RR, q_RL = q[0:3], q[3:6], q[6:9], q[9:12]
+		# ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
+		# Extract the 12 physical joint positions
+		q = self.data.qpos[7:19].copy()
+		q_FR, q_FL, q_RR, q_RL = q[0:3], q[3:6], q[6:9], q[9:12]
 
-		# # Invert right hips for mirroring
-		# q_FR[0] *= -1
-		# q_RR[0] *= -1
+		# Invert right hips for mirroring
+		q_FR[0] *= -1
+		q_RR[0] *= -1
 
-		# # Calculate symmetry for every pair of legs
-		# diagonal_symmetry_penalty = -0.2 * (
-		# 	float(np.sum(np.square(q_FR - q_RL))) +
-		# 	float(np.sum(np.square(q_FL - q_RR)))
-		# )
-		# horizontal_symmetry_penalty = -0.2 * (
-		# 	float(np.sum(np.square(q_FR - q_FL))) +
-		# 	float(np.sum(np.square(q_RR - q_RL)))
-		# )
+		# Calculate symmetry for every pair of legs
+		diagonal_symmetry_penalty = -0.2 * (
+			float(np.sum(np.square(q_FR - q_RL))) +
+			float(np.sum(np.square(q_FL - q_RR)))
+		)
+		horizontal_symmetry_penalty = -0.2 * (
+			float(np.sum(np.square(q_FR - q_FL))) +
+			float(np.sum(np.square(q_RR - q_RL)))
+		)
 
-		# symmetry_penalty = max(diagonal_symmetry_penalty, horizontal_symmetry_penalty)
+		symmetry_penalty = max(diagonal_symmetry_penalty, horizontal_symmetry_penalty)
 
 		components = {
 			"velocity_direction":		2.0 * cos_sim,
@@ -269,7 +269,7 @@ class UnitreeA1Env(gym.Env):
 			"pitch_error":				1.0 * pitch_error,
 			"roll_error": 				1.0 * roll_error,
 			# "energy_penalty": 		1.0 * energy_penalty,
-			# "symmetry_penalty": 		1.0 * symmetry_penalty,
+			"symmetry_penalty": 		1.0 * symmetry_penalty,
 			"fall_penalty": 			100.0 * fall_penalty,
 		}
 
