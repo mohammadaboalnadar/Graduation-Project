@@ -257,7 +257,7 @@ class UnitreeA1Env(gym.Env):
 		# )
 
 		# symmetry_penalty = max(diagonal_symmetry_penalty, horizontal_symmetry_penalty)
-		symmetry_penalty = diagonal_symmetry_penalty
+		symmetry_penalty = diagonal_symmetry_penalty + 2
 
 		components = {
 			"velocity_direction":		1.0 * cos_sim,
