@@ -227,7 +227,7 @@ class UnitreeA1Env(gym.Env):
 
 		# ── Stability penalties ───────────────────────────────────────
 		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos))) * 0.3
-		action_rate_penalty = -float(np.sum(np.square(action - self.last_action))) * 0.1
+		# action_rate_penalty = -float(np.sum(np.square(action - self.last_action))) * 0.1
 		vertical_vel    = -float(self.data.qvel[2])**2
 		pitch_error, roll_error = -pitch**2, -roll**2
 
@@ -260,11 +260,11 @@ class UnitreeA1Env(gym.Env):
 
 		components = {
 			"velocity_direction":		2.0 * cos_sim,
-			"velocity_magnitude":		100.0 * speed_reward,
-			"angular_velocity":			10.0 * angular_vel_reward,
+			"velocity_magnitude":		1.0 * speed_reward,
+			"angular_velocity":			1.0 * angular_vel_reward,
 			"height":					1.0 * height_reward,
 			"pose_similarity":			0.05 * pose_similarity,
-			"action_rate":				0.05 * action_rate_penalty,
+			# "action_rate":			0.05 * action_rate_penalty,
 			"vertical_velocity":		1.0 * vertical_vel,
 			"pitch_error":				1.0 * pitch_error,
 			"roll_error": 				1.0 * roll_error,
