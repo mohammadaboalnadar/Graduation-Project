@@ -26,7 +26,7 @@ dt = float(model.opt.timestep)
 #[OPTIONS]:
 
 VERSION = "12.3"
-TOTAL_TIMESTEPS = 200_000_000
+TOTAL_TIMESTEPS = 400_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
 N_ENVS = 8
@@ -132,11 +132,14 @@ if __name__ == "__main__":
 		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 
-		# model.learning_rate = get_linear_fn(1e-5, 1e-5, 1)
+		model.learning_rate = get_linear_fn(1e-5, 1e-5, 1)
 		# model.clip_range    = get_linear_fn(0.2,  0.2, 1)
 		# model.learning_rate = float(5e-5)
 		# model.target_kl     = None
 		# model.ent_coef	  = 0.005
+		
+		model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
+		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 	else:
 		print("Creating new model")
 		model = PPO(
@@ -172,11 +175,11 @@ if __name__ == "__main__":
 
 	try:
 		model.learn(
-			total_timesteps=TOTAL_TIMESTEPS - model.num_timesteps,
+			total_timesteps=TOTAL_TIMESTEPS,# - model.num_timesteps,
 			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,
-			reset_num_timesteps = not modelExists
+			# reset_num_timesteps = not modelExists
 		)
 	except KeyboardInterrupt:
 		print("Training interrupted by user. Saving model...")
