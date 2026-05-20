@@ -136,7 +136,7 @@ if __name__ == "__main__":
 		# model.clip_range    = get_linear_fn(0.2,  0.2, 1)
 		# model.learning_rate = float(5e-5)
 		# model.target_kl     = None
-		# model.ent_coef	  = 0.005
+		model.ent_coef	  = 0.02
 		
 		model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
