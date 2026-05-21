@@ -25,8 +25,8 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "12.3s2.3"
-TOTAL_TIMESTEPS = 10_000_000
+VERSION = "13.0"
+TOTAL_TIMESTEPS = 200_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
 N_ENVS = 8
@@ -132,10 +132,10 @@ if __name__ == "__main__":
 		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 
-		model.learning_rate = get_linear_fn(1e-3, 3e-4, 0.5)
-		model.clip_range    = get_linear_fn(0.5,  0.2, 0.5)
+		# model.learning_rate = get_linear_fn(1e-3, 3e-4, 0.5)
+		# model.clip_range    = get_linear_fn(0.5,  0.2, 0.5)
 		# model.target_kl     = None
-		model.ent_coef	  = 0.01
+		# model.ent_coef	  = 0.01
 		
 		model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
@@ -145,20 +145,20 @@ if __name__ == "__main__":
 			"MlpPolicy",
 			env,
 			# ── Rollout ────────────────────────────────────────────────────
-			n_steps=128,           # larger buffer = more stable gradient estimates
+			n_steps=200,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
-			batch_size=512,
-			n_epochs=4,             # reduced from 10 — less reuse per rollout
+			batch_size=2048,
+			n_epochs=10,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=get_linear_fn(3e-4, 1e-5, 1),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
-			# clip_range=get_linear_fn(0.2,  0.2, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
+			learning_rate=get_linear_fn(1e-3, 1e-6, 1),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			# target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
-			gamma=0.985,
+			gamma=0.99,
 			gae_lambda=0.95,
 			# ── Entropy ───────────────────────────────────────────────────
-			ent_coef=0.005,         # small but nonzero — keeps exploration alive
+			ent_coef=0.01,         # small but nonzero — keeps exploration alive
 			# ── Value function ────────────────────────────────────────────
 			vf_coef=0.5,
 			max_grad_norm=0.5,      # gradient clipping — extra protection against explosions
