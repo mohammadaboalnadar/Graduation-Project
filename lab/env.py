@@ -39,7 +39,7 @@ class UnitreeA1Env(gym.Env):
 			-0.1, 1.0, -1.5,   # Rear Right
 			0.1, 1.0, -1.5    # Rear Left
 		], dtype=np.float32)
-		self.action_scale = 0.5 # deviation from default pose at max action
+		self.action_scale = 0.8 # deviation from default pose at max action
 		self.last_action = np.zeros(n_actuators, dtype=np.float32)
 
 		# ── Observation space ─────────────────────────────────────────
@@ -257,11 +257,11 @@ class UnitreeA1Env(gym.Env):
 		# )
 
 		# symmetry_penalty = max(diagonal_symmetry_penalty, horizontal_symmetry_penalty)
-		symmetry_penalty = diagonal_symmetry_penalty + 2
+		symmetry_penalty = diagonal_symmetry_penalty + 1
 
 		components = {
-			"velocity_direction":		1.0 * cos_sim,
-			"velocity_magnitude":		1.0 * speed_reward,
+			"velocity_direction":		2.0 * cos_sim,
+			"velocity_magnitude":		3.0 * speed_reward,
 			"angular_velocity":			1.0 * angular_vel_reward,
 			"height":					0.25 * height_reward,
 			"pose_similarity":			0.05 * pose_similarity,
@@ -270,7 +270,7 @@ class UnitreeA1Env(gym.Env):
 			"pitch_error":				2.0 * pitch_error,
 			"roll_error": 				2.0 * roll_error,
 			# "energy_penalty": 		1.0 * energy_penalty,
-			"symmetry_penalty": 		4.0 * symmetry_penalty,
+			"symmetry_penalty": 		1.0 * symmetry_penalty,
 			"fall_penalty": 			100.0 * fall_penalty,
 		}
 
