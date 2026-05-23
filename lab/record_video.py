@@ -7,14 +7,16 @@ def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fp
 	env = env(xml_path, render_mode="rgb_array")
 
 	physics_dt   = env.model.opt.timestep
-	n_substeps   = env.model.opt.nsubsteps if hasattr(env.model.opt, 'nsubsteps') else 1
-	step_dt      = physics_dt * n_substeps  # real seconds per env.step()
-
-	sim_fps      = speed_multiplier / step_dt
+	substeps     = round(env.dt / physics_dt)
+	step_dt      = env.dt  # real seconds per env.step()
+	
+	# Model runs at 50Hz (env.dt = 0.02s = 10 physics substeps of 0.002s each)
+	model_hz     = 1.0 / step_dt
+	sim_fps      = model_hz * speed_multiplier
 	render_every = max(1, round(sim_fps / fps))
 
 	print(f"Physics dt:    {physics_dt*1000:.2f}ms")
-	print(f"Substeps:      {n_substeps}")
+	print(f"Substeps:      {substeps}")
 	print(f"Real dt/step:  {step_dt*1000:.2f}ms  ({sim_fps:.1f} Hz)")
 	print(f"Render every:  {render_every} steps → {sim_fps/render_every:.1f}fps recorded")
 
@@ -42,9 +44,9 @@ def record_video(model_path, env, xml_path, output_path, duration_seconds=10, fp
 
 if __name__ == "__main__":
 	xml_path = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
-	modelVersion = "9.0"
-	exportTitle = "Checkpoint_7M"
-	speedMultiplier = 0.25
+	modelVersion = "14.0"
+	exportTitle = "Baseline Forward Sprint"
+	speedMultiplier = 1
 
 	from env import UnitreeA1Env
 	from pathlib import Path
@@ -56,5 +58,5 @@ if __name__ == "__main__":
 		if response.lower() != "y":
 			print("Aborting video export.")
 			exit()
-	# record_video(f"{modelsPath}/a1_walk_v{modelVersion}", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)
-	record_video(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v9.0\7000000_steps.zip", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)
+	record_video(f"{modelsPath}/a1_walk_v{modelVersion}", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)
+	# record_video(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v9.0\7000000_steps.zip", UnitreeA1Env, xml_path, outputPath, duration_seconds=10, fps=60, speed_multiplier=speedMultiplier)

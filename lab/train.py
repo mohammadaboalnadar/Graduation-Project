@@ -132,7 +132,8 @@ if __name__ == "__main__":
 		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 
-		# model.learning_rate = get_linear_fn(3e-4, 1e-5, 1)
+		model.learning_rate = get_linear_fn(3e-4, 1e-5, 1)
+		# model.learning_rate = get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0))
 		# model.clip_range    = get_linear_fn(0.5,  0.2, 0.5)
 		# model.target_kl     = None
 		# model.ent_coef	  = 0.01

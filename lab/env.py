@@ -101,7 +101,7 @@ class UnitreeA1Env(gym.Env):
 		
 		# if self.np_random.choice([True, False]):
 		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
-		self.ref_vel = np.array([3,0,0], dtype=np.float32) # --- IGNORE ---
+		self.ref_vel = np.array([self.np_random.uniform(0, 3.0),0,0], dtype=np.float32) # --- IGNORE ---
 		
 		# self.ref_height = self.np_random.uniform(0.2, 0.3)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
