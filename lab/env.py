@@ -58,7 +58,7 @@ class UnitreeA1Env(gym.Env):
 
 		# ── Command state (randomised each episode) ───────────────────
 		self.ref_vel     = np.zeros(3, dtype=np.float32)  # [vx, vy, wz] [m/s, m/s, rad/s]
-		self.ref_height  = 0.287
+		self.ref_height  = 0.25
 
 		# ── Rendering setup ───────────────────────────────────────────
 		self.render_mode = render_mode
@@ -263,7 +263,7 @@ class UnitreeA1Env(gym.Env):
 			"velocity_direction":		2.0 * cos_sim,
 			"velocity_magnitude":		3.0 * speed_reward,
 			"angular_velocity":			1.0 * angular_vel_reward,
-			"height":					0.25 * height_reward,
+			"height":					2.0 * height_reward,
 			"pose_similarity":			0.05 * pose_similarity,
 			# "action_rate":			0.05 * action_rate_penalty,
 			"vertical_velocity":		0.25 * vertical_vel,
