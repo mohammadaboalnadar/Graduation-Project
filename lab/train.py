@@ -1,6 +1,36 @@
+import os; os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+import io
+import torch
+
+# ---------------------------------------------------------------------
+# SB3 / PYTORCH 2.4+ STREAM FIX
+# Intercepts save/load to force memory buffering for file-like objects
+# ---------------------------------------------------------------------
+_original_save = torch.save
+_original_load = torch.load
+
+def _safe_save(obj, f, *args, **kwargs):
+    if hasattr(f, "write"):
+        buffer = io.BytesIO()
+        _original_save(obj, buffer, *args, **kwargs)
+        f.write(buffer.getvalue())
+    else:
+        _original_save(obj, f, *args, **kwargs)
+
+def _safe_load(f, *args, **kwargs):
+    if hasattr(f, "read"):
+        buffer = io.BytesIO(f.read())
+        return _original_load(buffer, *args, **kwargs)
+    return _original_load(f, *args, **kwargs)
+
+torch.save = _safe_save
+torch.load = _safe_load
+# ---------------------------------------------------------------------
+
 import mujoco
 import numpy as np
-from stable_baselines3 import PPO
+from sbx import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
@@ -25,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "14.0"
+VERSION = "15.0"
 TOTAL_TIMESTEPS = 200_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -123,38 +153,42 @@ if __name__ == "__main__":
 	# 	print("TensorBoard not found in PATH")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
-	env = VecNormalize(env, norm_obs=True, clip_obs=10.0, gamma=0.985, norm_reward=True, clip_reward=10.0)
+	env = VecNormalize(env, norm_obs=True, clip_obs=10.0, gamma=0.99, norm_reward=True, clip_reward=10.0)
 
 	# Load existing model if available, otherwise create new one
 	modelExists = Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists()
 	if modelExists:
 		print(f"Loading existing model a1_walk_v{VERSION}.zip")
-		VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
-		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
+		env = VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
+		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)#, custom_objects={
+			# "learning_rate": get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0))
+		# })
 
 		# model.learning_rate = get_linear_fn(3e-4, 1e-5, 1)
-		model.learning_rate = get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0))
+		# model.
 		# model.clip_range    = get_linear_fn(0.5,  0.2, 0.5)
 		# model.target_kl     = None
 		# model.ent_coef	  = 0.01
 		
-		model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
-		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
+		# model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
+		# model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
 	else:
 		print("Creating new model")
 		model = PPO(
 			"MlpPolicy",
 			env,
+			# device="cpu",
+			# use_sde=True,          # better exploration in continuous action spaces
 			# ── Rollout ────────────────────────────────────────────────────
-			n_steps=200,           # larger buffer = more stable gradient estimates
+			n_steps=2048,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
-			batch_size=1600,
+			batch_size=1024,
 			n_epochs=5,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0)),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			# learning_rate=get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0)),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
 			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
-			# target_kl=0.02,         # hard stop if policy drifts too far per update
+			target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
 			gamma=0.99,
 			gae_lambda=0.95,
@@ -167,8 +201,10 @@ if __name__ == "__main__":
 			verbose=0,
 			tensorboard_log="./lab/tb_logs/",
 			policy_kwargs=dict(
-				net_arch=[512, 256, 128, 64],
-				# log_std_init=-4,  # initialise std to ~0.37 instead of default 1.0
+				net_arch=[256, 256],
+				# use_expln=True,
+				# squash_output=True,
+				# log_std_init=-2.0,  # initialise std to ~0.37 instead of default 1.0
 									# smaller initial actions = less chaos in early training
 			)
 		)

@@ -101,8 +101,9 @@ class UnitreeA1Env(gym.Env):
 		
 		# if self.np_random.choice([True, False]):
 		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
-		self.ref_vel = np.array([self.np_random.uniform(0, 3.0),0,0], dtype=np.float32) # --- IGNORE ---
-		
+		# self.ref_vel = np.array([self.np_random.uniform(0, 3.0),0,0], dtype=np.float32)
+		self.ref_vel = np.array([3.0, 0, 0], dtype=np.float32)
+
 		# self.ref_height = self.np_random.uniform(0.2, 0.3)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 
@@ -234,9 +235,6 @@ class UnitreeA1Env(gym.Env):
 		# torques = self.data.qfrc_actuator
 		# energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
 
-		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -1 if self._is_fallen() else 0.0
-
 		# ── Symmetry penalty (encourage diagonal pairs to do similar things) ─────────────────────
 		# Extract the 12 physical joint positions
 		q = self.data.qpos[7:19].copy()
@@ -257,24 +255,44 @@ class UnitreeA1Env(gym.Env):
 		# )
 
 		# symmetry_penalty = max(diagonal_symmetry_penalty, horizontal_symmetry_penalty)
-		symmetry_penalty = diagonal_symmetry_penalty + 1
+		symmetry_penalty = diagonal_symmetry_penalty
 
-		components = {
-			"velocity_direction":		2.0 * cos_sim,
-			"velocity_magnitude":		3.0 * speed_reward,
-			"angular_velocity":			1.0 * angular_vel_reward,
-			"height":					2.0 * height_reward,
-			"pose_similarity":			0.05 * pose_similarity,
-			# "action_rate":			0.05 * action_rate_penalty,
-			"vertical_velocity":		0.25 * vertical_vel,
-			"pitch_error":				2.0 * pitch_error,
-			"roll_error": 				2.0 * roll_error,
-			# "energy_penalty": 		1.0 * energy_penalty,
-			"symmetry_penalty": 		1.0 * symmetry_penalty,
-			"fall_penalty": 			100.0 * fall_penalty,
+		# ── Combine everything ─────────────────────────────────────────────
+
+		penalty_multiplier = np.exp(
+			(0.5 * pose_similarity) +
+			(1.0 * vertical_vel) +
+			(2.0 * pitch_error) +
+			(2.0 * roll_error) +
+			(2.0 * symmetry_penalty)
+		)
+
+		total_reward = (
+			2.0 * cos_sim +
+			3.0 * speed_reward +
+			1.0 * angular_vel_reward +
+			1.0 * height_reward
+		)
+		
+		# ── Fall penalty ──────────────────────────────────────────────
+		fall_penalty = -1 if self._is_fallen() else 0.0
+
+		return total_reward * penalty_multiplier + fall_penalty, {
+			"velocity_direction": cos_sim,
+			"velocity_magnitude": speed_reward,
+			"angular_velocity": angular_vel_reward,
+			"height": height_reward,
+			"pose_similarity": pose_similarity,
+			# "action_rate": action_rate_penalty,
+			"vertical_velocity": vertical_vel,
+			"a_pitch_error": pitch_error,
+			"a_roll_error": roll_error,
+			# "energy_penalty": energy_penalty,
+			"symmetry_penalty": symmetry_penalty,
+			"fall_penalty": fall_penalty,
+			"_total_reward": total_reward,
+			"_penalty_multiplier": penalty_multiplier
 		}
-
-		return float(sum(components.values())), components
 
 	# ──────────────────────────────────────────────────────────────────
 	def _is_fallen(self) -> bool:
