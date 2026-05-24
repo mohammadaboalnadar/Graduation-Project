@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "16.0"
+VERSION = "16.1"
 TOTAL_TIMESTEPS = 20_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -185,7 +185,7 @@ if __name__ == "__main__":
 			batch_size=1024,
 			n_epochs=5,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			# learning_rate=get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0)),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			learning_rate=3e-4,#get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0)),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
 			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			target_kl=0.02,         # hard stop if policy drifts too far per update
