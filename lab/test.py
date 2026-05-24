@@ -1,10 +1,21 @@
-from stable_baselines3 import PPO
+import os; os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+import io
+import torch
+_original_load = torch.load
+def _safe_load(f, *args, **kwargs):
+    if hasattr(f, "read"):
+        buffer = io.BytesIO(f.read())
+        return _original_load(buffer, *args, **kwargs)
+    return _original_load(f, *args, **kwargs)
+torch.load = _safe_load
+
+from sbx import PPO
 from stable_baselines3.common.vec_env import VecNormalize, DummyVecEnv
 from env import UnitreeA1Env
 import numpy as np
 import time
 
-VERSION = "14.0"
+VERSION = "16.0"
 SPEED_MULTIPLIER = 0.5  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model

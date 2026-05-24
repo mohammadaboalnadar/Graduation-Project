@@ -268,16 +268,15 @@ class UnitreeA1Env(gym.Env):
 		)
 
 		total_reward = (
-			2.0 * cos_sim +
-			3.0 * speed_reward +
-			1.0 * angular_vel_reward +
-			1.0 * height_reward
+			1.0 * cos_sim +
+			1.0 * speed_reward +
+			1.0 * angular_vel_reward
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -1 if self._is_fallen() else 0.0
 
-		return total_reward * penalty_multiplier + fall_penalty, {
+		return total_reward + fall_penalty, {
 			"velocity_direction": cos_sim,
 			"velocity_magnitude": speed_reward,
 			"angular_velocity": angular_vel_reward,
@@ -297,10 +296,10 @@ class UnitreeA1Env(gym.Env):
 	# ──────────────────────────────────────────────────────────────────
 	def _is_fallen(self) -> bool:
 		yaw, pitch, roll = self._get_euler()
-		if abs(pitch) > np.radians(45) or abs(roll) > np.radians(45):
+		if abs(pitch) > np.radians(25) or abs(roll) > np.radians(25):
 			return True
 		z = self.data.qpos[2]
-		if z < 0.1 or z > 0.5:
+		if z < 0.18 or z > 0.5:
 			return True
 		
 		return False
