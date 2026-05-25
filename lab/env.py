@@ -102,7 +102,7 @@ class UnitreeA1Env(gym.Env):
 		# if self.np_random.choice([True, False]):
 		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
 		# self.ref_vel = np.array([self.np_random.uniform(0, 3.0),0,0], dtype=np.float32)
-		self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
+		self.ref_vel = np.array([3, 0, 0], dtype=np.float32)
 
 		# self.ref_height = self.np_random.uniform(0.2, 0.3)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
@@ -227,8 +227,8 @@ class UnitreeA1Env(gym.Env):
 		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 2000.0, 200.0)
 
 		# ── Stability penalties ───────────────────────────────────────
-		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos))) * 0.3
-		# action_rate_penalty = -float(np.sum(np.square(action - self.last_action))) * 0.1
+		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos)))
+		action_rate_penalty = -float(np.sum(np.square(action - self.last_action))) * 0.1
 		vertical_vel    = -float(self.data.qvel[2])**2
 		pitch_error, roll_error = -pitch**2, -roll**2
 
@@ -260,29 +260,29 @@ class UnitreeA1Env(gym.Env):
 		# ── Combine everything ─────────────────────────────────────────────
 
 		penalty_multiplier = np.exp(
-			(0.5 * pose_similarity) +
-			(1.0 * vertical_vel) +
-			(2.0 * pitch_error) +
-			(2.0 * roll_error) +
-			(2.0 * symmetry_penalty)
+			(0.3 * pose_similarity) +
+			(0.5 * vertical_vel) +
+			(0.5 * pitch_error) +
+			(0.5 * roll_error) +
+			(0.5 * symmetry_penalty) +
+			(0.05 * action_rate_penalty)
 		)
 
 		total_reward = (
-			1.0 * cos_sim +
-			1.0 * speed_reward +
-			1.0 * angular_vel_reward
+			1.0 * cos_sim * speed_reward +
+			0.2 * angular_vel_reward
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -1 if self._is_fallen() else 0.0
 
-		return total_reward + fall_penalty, {
+		return total_reward * penalty_multiplier + fall_penalty, {
 			"velocity_direction": cos_sim,
 			"velocity_magnitude": speed_reward,
 			"angular_velocity": angular_vel_reward,
 			"height": height_reward,
 			"pose_similarity": pose_similarity,
-			# "action_rate": action_rate_penalty,
+			"action_rate": action_rate_penalty,
 			"vertical_velocity": vertical_vel,
 			"a_pitch_error": pitch_error,
 			"a_roll_error": roll_error,

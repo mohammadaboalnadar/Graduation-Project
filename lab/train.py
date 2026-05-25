@@ -30,7 +30,7 @@ torch.load = _safe_load
 
 import mujoco
 import numpy as np
-from sbx import PPO
+from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
@@ -55,8 +55,8 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "16.1"
-TOTAL_TIMESTEPS = 20_000_000
+VERSION = "16.3"
+TOTAL_TIMESTEPS = 200_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
 N_ENVS = 8
@@ -178,14 +178,14 @@ if __name__ == "__main__":
 			"MlpPolicy",
 			env,
 			# device="cpu",
-			# use_sde=True,          # better exploration in continuous action spaces
+			use_sde=True,          # better exploration in continuous action spaces
 			# ── Rollout ────────────────────────────────────────────────────
 			n_steps=2048,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
 			batch_size=1024,
 			n_epochs=5,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=3e-4,#get_linear_fn(1e-3, 3e-4, min(5e6/TOTAL_TIMESTEPS, 1.0)),#make_schedule(5e-4, 1e-6, TOTAL_TIMESTEPS, 0),
+			learning_rate=get_linear_fn(3e-4, 1e-5, 1),
 			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			target_kl=0.02,         # hard stop if policy drifts too far per update
@@ -193,7 +193,7 @@ if __name__ == "__main__":
 			gamma=0.99,
 			gae_lambda=0.95,
 			# ── Entropy ───────────────────────────────────────────────────
-			ent_coef=0.01,         # small but nonzero — keeps exploration alive
+			ent_coef=0.0,         # small but nonzero — keeps exploration alive
 			# ── Value function ────────────────────────────────────────────
 			vf_coef=0.5,
 			max_grad_norm=0.5,      # gradient clipping — extra protection against explosions
@@ -204,8 +204,7 @@ if __name__ == "__main__":
 				net_arch=[256, 256],
 				# use_expln=True,
 				# squash_output=True,
-				# log_std_init=-2.0,  # initialise std to ~0.37 instead of default 1.0
-									# smaller initial actions = less chaos in early training
+				# log_std_init=-2.0
 			)
 		)
 
