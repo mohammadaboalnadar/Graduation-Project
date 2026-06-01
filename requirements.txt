@@ -4,3 +4,4 @@ stable-baselines3
 numpy
 tensorboard
 sbx-rl
+imageio
