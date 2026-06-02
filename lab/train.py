@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "16.3"
+VERSION = "17.0"
 TOTAL_TIMESTEPS = 200_000_000
 CHECKPOINT_FREQ = 2_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 	# 	print("TensorBoard not found in PATH")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
-	env = VecNormalize(env, norm_obs=True, clip_obs=10.0, gamma=0.99, norm_reward=True, clip_reward=10.0)
+	env = VecNormalize(env, norm_obs=False, gamma=0.99, norm_reward=True, clip_reward=10.0)
 
 	# Load existing model if available, otherwise create new one
 	modelExists = Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists()
@@ -210,11 +210,11 @@ if __name__ == "__main__":
 
 	try:
 		model.learn(
-			total_timesteps=TOTAL_TIMESTEPS,# - model.num_timesteps,
+			total_timesteps=TOTAL_TIMESTEPS - model.num_timesteps,
 			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,
-			# reset_num_timesteps = not modelExists
+			reset_num_timesteps = not modelExists
 		)
 	except KeyboardInterrupt:
 		print("Training interrupted by user. Saving model...")

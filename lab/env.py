@@ -58,7 +58,7 @@ class UnitreeA1Env(gym.Env):
 
 		# ── Command state (randomised each episode) ───────────────────
 		self.ref_vel     = np.zeros(3, dtype=np.float32)  # [vx, vy, wz] [m/s, m/s, rad/s]
-		self.ref_height  = 0.25
+		self.ref_height  = 0.28
 
 		# ── Rendering setup ───────────────────────────────────────────
 		self.render_mode = render_mode
@@ -88,23 +88,23 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		# self.ref_vel = np.array([3, 0, 0], dtype=np.float32)
-		if self.np_random.choice([True, False]):
-			speed         = self.np_random.uniform(0, 3)
-			direction     = 0 #self.np_random.uniform(-np.pi, np.pi)
-			self.ref_vel   = np.array([
-				speed * np.cos(direction),
-				speed * np.sin(direction),
-				0
-			], dtype=np.float32)
-		else:
-			self.ref_vel = np.zeros(3, dtype=np.float32)
+		self.ref_vel = np.array([3, 0, 0], dtype=np.float32)
+		# if self.np_random.choice([True, False]):
+		# 	speed         = self.np_random.uniform(0, 3)
+		# 	direction     = 0 #self.np_random.uniform(-np.pi, np.pi)
+		# 	self.ref_vel   = np.array([
+		# 		speed * np.cos(direction),
+		# 		speed * np.sin(direction),
+		# 		0
+		# 	], dtype=np.float32)
+		# else:
+		# 	self.ref_vel = np.zeros(3, dtype=np.float32)
 		
 		# if self.np_random.choice([True, False]):
 		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
 		# self.ref_vel = np.array([self.np_random.uniform(0, 3.0),0,0], dtype=np.float32)
 
-		# self.ref_height = self.np_random.uniform(0.2, 0.3)
+		# self.ref_height = self.np_random.uniform(0.2, 0.36)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 
 		return self._get_obs(), {}
@@ -172,14 +172,15 @@ class UnitreeA1Env(gym.Env):
 		base_lin_vel  		= self.data.qvel[0:3].copy()
 
 		return np.concatenate([
-			base_lin_vel,
-			base_ang_vel,
-			np.array([roll, pitch], dtype=np.float32),
-			joint_pos, joint_vel,
-			self.last_action,
+			base_lin_vel / 3.0, # normalize to ~[-1, 1] range based on expected max speeds
+			base_ang_vel / 2.0, # normalize to ~[-1, 1] range based on expected max speeds
+			np.array([roll, pitch], dtype=np.float32) / np.pi,  # normalize angles to [-1, 1]
+			(joint_pos - self.default_dof_pos) / self.action_scale,  # express joint positions as deviation from default pose, normalized to [-1, 1]
+			joint_vel / 21.0, # Unitree A1 max joint speed is around 21 rad/s, so this normalizes to ~[-1, 1]
+			self.last_action, # already in [-1, 1]
 			
-			self.ref_vel,   # [vx, vy, wz]
-			np.array([self.ref_height], dtype=np.float32),
+			self.ref_vel / 3.0, # [vx, vy, wz] # normalize to ~[-1, 1] range based on expected max speeds
+			np.array([self.ref_height - 0.28 / 0.08], dtype=np.float32), # normalize height to ~[-1, 1] range around nominal height of 0.28m with expected variation of ±0.08m
 		]).astype(np.float32)
 
 	# ──────────────────────────────────────────────────────────────────
@@ -270,7 +271,8 @@ class UnitreeA1Env(gym.Env):
 
 		total_reward = (
 			1.0 * cos_sim * speed_reward +
-			0.2 * angular_vel_reward
+			0.2 * angular_vel_reward +
+			0.1 * height_reward
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
