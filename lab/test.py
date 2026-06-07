@@ -15,12 +15,12 @@ from env import UnitreeA1Env
 import numpy as np
 import time
 
-VERSION = "17.0"
+VERSION = "18.0"
 SPEED_MULTIPLIER = 0.5  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model
-model = PPO.load(r".\Models\a1_walk_v" + VERSION)
-# model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v17.0\15000000_steps.zip")
+# model = PPO.load(r".\Models\a1_walk_v" + VERSION)
+model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v18.0\160000000_steps.zip")
 
 # Create a render env
 xmlPath = r".\external\mujoco_menagerie\unitree_a1\scene.xml"

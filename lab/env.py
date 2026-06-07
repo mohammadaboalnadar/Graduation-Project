@@ -41,6 +41,11 @@ class UnitreeA1Env(gym.Env):
 		], dtype=np.float32)
 		self.action_scale = 0.8 # deviation from default pose at max action
 		self.last_action = np.zeros(n_actuators, dtype=np.float32)
+		self.last_last_action = np.zeros(n_actuators, dtype=np.float32)
+
+		self.running_pitch = 0.0
+		self.running_roll = 0.0
+		self.skew_alpha = 0.05  # How fast the memory updates. Lower = longer memory.
 
 		# ── Observation space ─────────────────────────────────────────
 		# Base Linear Velocities								=  3
@@ -51,9 +56,9 @@ class UnitreeA1Env(gym.Env):
 		# reference velocity vector [vx, vy, wz]				=  3
 		# reference height										=  1
 		# ─────────────────────────────────────────────────────────────
-		# Total													= 48
+		# Total													= 50
 		self.observation_space = spaces.Box(
-			low=-np.inf, high=np.inf, shape=(48,), dtype=np.float32
+			low=-np.inf, high=np.inf, shape=(50,), dtype=np.float32
 		)
 
 		# ── Command state (randomised each episode) ───────────────────
@@ -88,15 +93,15 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		# self.ref_vel = np.array([3, 0, 0], dtype=np.float32)
-		if self.np_random.choice([True, False]):
-			self.ref_vel   = np.array([
-				self.np_random.uniform(-2.5, 2.5),
-				self.np_random.uniform(-1, 1),
-				0
-			], dtype=np.float32)
-		else:
-			self.ref_vel = np.zeros(3, dtype=np.float32)
+		self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
+		# if self.np_random.choice([True, False]):
+		# 	self.ref_vel   = np.array([
+		# 		self.np_random.uniform(-2.5, 2.5),
+		# 		self.np_random.uniform(-1, 1),
+		# 		0
+		# 	], dtype=np.float32)
+		# else:
+		# 	self.ref_vel = np.zeros(3, dtype=np.float32)
 		
 		# if self.np_random.choice([True, False]):
 		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
@@ -104,6 +109,9 @@ class UnitreeA1Env(gym.Env):
 
 		# self.ref_height = self.np_random.uniform(0.2, 0.36)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
+		self.last_last_action = np.zeros(self.model.nu, dtype=np.float32)
+		self.running_pitch = 0.0
+		self.running_roll = 0.0
 
 		return self._get_obs(), {}
 
@@ -128,8 +136,8 @@ class UnitreeA1Env(gym.Env):
 		terminated                 = self._is_fallen()
 		truncated                  = self._step_count >= self.max_episode_steps
 
+		self.last_last_action = self.last_action.copy()
 		self.last_action = action.copy()
-
 		return obs, reward, terminated, truncated, {"reward_components": components}
 
 	# ──────────────────────────────────────────────────────────────────
@@ -168,6 +176,7 @@ class UnitreeA1Env(gym.Env):
 		raw, pitch, roll    = self._get_euler()
 		base_ang_vel  		= self.data.qvel[3:6].copy()
 		base_lin_vel  		= self.data.qvel[0:3].copy()
+		running_skew 		= np.array([self.running_pitch, self.running_roll], dtype=np.float32)
 
 		return np.concatenate([
 			base_lin_vel / 3.0, # normalize to ~[-1, 1] range based on expected max speeds
@@ -176,7 +185,7 @@ class UnitreeA1Env(gym.Env):
 			(joint_pos - self.default_dof_pos) / self.action_scale,  # express joint positions as deviation from default pose, normalized to [-1, 1]
 			joint_vel / 21.0, # Unitree A1 max joint speed is around 21 rad/s, so this normalizes to ~[-1, 1]
 			self.last_action, # already in [-1, 1]
-			
+			running_skew,
 			self.ref_vel / 3.0, # [vx, vy, wz] # normalize to ~[-1, 1] range based on expected max speeds
 			np.array([self.ref_height - 0.28 / 0.08], dtype=np.float32), # normalize height to ~[-1, 1] range around nominal height of 0.28m with expected variation of ±0.08m
 		]).astype(np.float32)
@@ -223,13 +232,19 @@ class UnitreeA1Env(gym.Env):
 		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0, 1.0)
 
 		# ── Height reward ─────────────────────────────────────────────
-		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 2000.0, 200.0)
+		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 100.0)
 
 		# ── Stability penalties ───────────────────────────────────────
-		pose_similarity = -float(np.sum(np.square(self.data.qpos[7:] - self.default_dof_pos)))
-		action_rate_penalty = -float(np.sum(np.square(action - self.last_action))) * 0.1
+		# Penalize only hip joints (indices 7, 10, 13, 16)
+		hip_indices = np.array([0, 3, 6, 9])  # indices within qpos[7:]
+		hip_similarity = -float(np.sum(np.square(self.data.qpos[7 + hip_indices] - self.default_dof_pos[hip_indices])))
+		pose_similarity = -float(np.sum(np.square((self.data.qpos[7] - self.default_dof_pos))))
+		action_2nd_derivative_penalty = -float(np.sum(np.square(action - (2.0 * self.last_action) + self.last_last_action)))
 		vertical_vel    = -float(self.data.qvel[2])**2
-		pitch_error, roll_error = -pitch**2, -roll**2
+		
+		self.running_pitch = (1 - self.skew_alpha) * self.running_pitch + self.skew_alpha * pitch
+		self.running_roll  = (1 - self.skew_alpha) * self.running_roll + self.skew_alpha * roll
+		pitch_penalty, roll_penalty = -self.running_pitch**2, -self.running_roll**2
 
 		# torques = self.data.qfrc_actuator
 		# energy_penalty   = -1e-5 * float(np.sum(np.square(torques)))
@@ -259,18 +274,19 @@ class UnitreeA1Env(gym.Env):
 		# ── Combine everything ─────────────────────────────────────────────
 
 		penalty_multiplier = np.exp(
-			(0.3 * pose_similarity) +
-			(0.5 * vertical_vel) +
-			(0.5 * pitch_error) +
-			(0.5 * roll_error) +
+			(1.0 * hip_similarity) +
+			(0.2 * pose_similarity) +
+			(0.25 * vertical_vel) +
+			(0.5 * pitch_penalty) +
+			(0.5 * roll_penalty) +
 			(0.5 * symmetry_penalty) +
-			(0.05 * action_rate_penalty)
+			(0.05 * action_2nd_derivative_penalty)
 		)
 
 		total_reward = (
 			1.0 * cos_sim * speed_reward +
-			0.2 * angular_vel_reward +
-			0.1 * height_reward
+			0.25 * angular_vel_reward +
+			0.25 * height_reward
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
@@ -281,11 +297,12 @@ class UnitreeA1Env(gym.Env):
 			"velocity_magnitude": speed_reward,
 			"angular_velocity": angular_vel_reward,
 			"height": height_reward,
+			"hip_similarity": hip_similarity,
 			"pose_similarity": pose_similarity,
-			"action_rate": action_rate_penalty,
+			"action_2nd_derivative": action_2nd_derivative_penalty,
 			"vertical_velocity": vertical_vel,
-			"a_pitch_error": pitch_error,
-			"a_roll_error": roll_error,
+			"a_pitch_error": pitch_penalty,
+			"a_roll_error": roll_penalty,
 			# "energy_penalty": energy_penalty,
 			"symmetry_penalty": symmetry_penalty,
 			"fall_penalty": fall_penalty,
