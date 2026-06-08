@@ -45,7 +45,7 @@ class UnitreeA1Env(gym.Env):
 
 		self.running_pitch = 0.0
 		self.running_roll = 0.0
-		self.skew_alpha = 0.05  # How fast the memory updates. Lower = longer memory.
+		self.skew_alpha = 0.1  # How fast the memory updates. Lower = longer memory.
 
 		# ── Observation space ─────────────────────────────────────────
 		# Base Linear Velocities								=  3
@@ -220,10 +220,8 @@ class UnitreeA1Env(gym.Env):
 		else:
 			cos_sim = 1.0
 
-		cos_sim = cos_sim / 2.0 + 0.5  # rescale from [-1, 1] to [0, 1]
-
 		# Magnitude: gaussian peak when speed matches target
-		speed_reward = self.gaus(actual_speed - ref_speed, 10.0, 0.1)
+		speed_reward = self.gaus(actual_speed - ref_speed, 4.0)
 
 		# Angular velocity:
 		ref_angular_vel = self.ref_vel[2]  # target yaw rate
@@ -290,7 +288,7 @@ class UnitreeA1Env(gym.Env):
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -5 if self._is_fallen() else 0.0
+		fall_penalty = -25 if self._is_fallen() else 0.0
 
 		return total_reward * penalty_multiplier + fall_penalty, {
 			"velocity_direction": cos_sim,

@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "18.6"
+VERSION = "18.8"
 TOTAL_TIMESTEPS = 1_000_000_000
 CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
@@ -179,6 +179,7 @@ if __name__ == "__main__":
 			env,
 			# device="cpu",
 			use_sde=True,          # better exploration in continuous action spaces
+			sde_sample_freq=16,   # how many steps to wait before resampling noise
 			# ── Rollout ────────────────────────────────────────────────────
 			n_steps=2048,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
@@ -202,8 +203,11 @@ if __name__ == "__main__":
 			tensorboard_log="./lab/tb_logs/",
 			policy_kwargs=dict(
 				net_arch=[256, 256],
+				# activation_fn=torch.nn.ELU,
 				# use_expln=True,
-				# squash_output=True,
+				squash_output=True,
+				full_std=True,
+
 				# log_std_init=-2.0
 			)
 		)

@@ -15,12 +15,12 @@ from env import UnitreeA1Env
 import numpy as np
 import time
 
-VERSION = "18.0"
-SPEED_MULTIPLIER = 0.5  # Adjust this to speed up or slow down the simulation
+VERSION = "18.8"
+SPEED_MULTIPLIER = 1.0  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model
-# model = PPO.load(r".\Models\a1_walk_v" + VERSION)
-model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v18.5\25000000_steps.zip")
+model = PPO.load(r".\Models\a1_walk_v" + VERSION)
+# model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v18.8\5000000_steps.zip")
 
 # Create a render env
 xmlPath = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
@@ -32,7 +32,7 @@ env = VecNormalize.load(rf".\Models\a1_walk_v{VERSION}_vecnormalize.pkl", venv)
 env.training = False
 env.norm_reward = False
 
-dt = float(raw_env.dt)
+dt = float(raw_env.dt)*2
 obs = env.reset()
 raw_env.render()
 
