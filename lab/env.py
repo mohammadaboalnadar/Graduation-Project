@@ -275,16 +275,16 @@ class UnitreeA1Env(gym.Env):
 
 		penalty_multiplier = np.exp(
 			(1.0 * hip_similarity) +
-			(0.2 * pose_similarity) +
+			(0.02 * pose_similarity) +
 			(0.25 * vertical_vel) +
-			(0.5 * pitch_penalty) +
-			(0.5 * roll_penalty) +
+			(1.0 * pitch_penalty) +
+			(1.0 * roll_penalty) +
 			(0.5 * symmetry_penalty) +
-			(0.01 * action_2nd_derivative_penalty)
+			(0.005 * action_2nd_derivative_penalty)
 		)
 
 		total_reward = (
-			1.0 * cos_sim * speed_reward +
+			1.5 * cos_sim * speed_reward +
 			0.25 * angular_vel_reward +
 			0.25 * height_reward
 		)

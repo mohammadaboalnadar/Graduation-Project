@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "18.3"
+VERSION = "18.4"
 TOTAL_TIMESTEPS = 1_000_000_000
 CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 4*50 # N seconds at 50Hz
