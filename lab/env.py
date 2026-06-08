@@ -311,8 +311,8 @@ class UnitreeA1Env(gym.Env):
 	# ──────────────────────────────────────────────────────────────────
 	def _is_fallen(self) -> bool:
 		yaw, pitch, roll = self._get_euler()
-		if abs(pitch) > np.radians(25) or abs(roll) > np.radians(25):
-			return True
+		# if abs(pitch) > np.radians(25) or abs(roll) > np.radians(25):
+		# 	return True
 		z = self.data.qpos[2]
 		if z < 0.18 or z > 0.5:
 			return True
