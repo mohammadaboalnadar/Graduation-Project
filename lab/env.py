@@ -273,15 +273,15 @@ class UnitreeA1Env(gym.Env):
 
 		# ── Combine everything ─────────────────────────────────────────────
 
-		penalty_multiplier = np.exp(
+		penalty_multiplier = np.exp(0.25 * (
 			(1.0 * hip_similarity) +
 			(0.02 * pose_similarity) +
 			(0.25 * vertical_vel) +
 			(1.0 * pitch_penalty) +
 			(1.0 * roll_penalty) +
 			(0.5 * symmetry_penalty) +
-			(0.005 * action_2nd_derivative_penalty)
-		)
+			(0.0 * action_2nd_derivative_penalty)
+		))
 
 		total_reward = (
 			1.5 * cos_sim * speed_reward +
@@ -290,7 +290,7 @@ class UnitreeA1Env(gym.Env):
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -1 if self._is_fallen() else 0.0
+		fall_penalty = -5 if self._is_fallen() else 0.0
 
 		return total_reward * penalty_multiplier + fall_penalty, {
 			"velocity_direction": cos_sim,
