@@ -1,0 +1,16 @@
+{
+  "value": 41.1632904,
+  "params": {
+    "sde_sample_freq": 16,
+    "n_steps_pow": 10,
+    "batch_size_pow": 8,
+    "n_epochs": 4,
+    "gamma": 0.9568012833128744,
+    "gae_lambda": 0.9156522017196635,
+    "learning_rate": 0.0004847297946706895
+  },
+  "user_attrs": {
+    "timesteps_per_trial": 1000000,
+    "trial_stage": "warmup"
+  }
+}
