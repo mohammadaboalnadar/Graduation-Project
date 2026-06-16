@@ -1,5 +1,6 @@
 external
 lab/tb_logs/*
+lab/optuna_tb_logs/*
 archive
 logs
 src

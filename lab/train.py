@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "18.11"
+VERSION = "18.12"
 TOTAL_TIMESTEPS = 1_000_000_000
 CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 20*50 # N seconds at 50Hz
@@ -179,20 +179,20 @@ if __name__ == "__main__":
 			env,
 			# device="cpu",
 			use_sde=True,          # better exploration in continuous action spaces
-			sde_sample_freq=256,   # how many steps to wait before resampling noise
+			sde_sample_freq=64,   # how many steps to wait before resampling noise
 			# ── Rollout ────────────────────────────────────────────────────
-			n_steps=2048,           # larger buffer = more stable gradient estimates
+			n_steps=2**12,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
-			batch_size=1024,
-			n_epochs=5,             # reduced from 10 — less reuse per rollout
+			batch_size=2**9,
+			n_epochs=9,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
-			# learning_rate=get_linear_fn(3e-4, 1e-5, 1),
+			learning_rate=0.00014457551706421586,
 			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
-			gamma=0.99,
-			gae_lambda=0.95,
+			gamma=0.9603819920758294,
+			gae_lambda=0.9156653294830852,
 			# ── Entropy ───────────────────────────────────────────────────
 			ent_coef=0.0,         # small but nonzero — keeps exploration alive
 			# ── Value function ────────────────────────────────────────────
