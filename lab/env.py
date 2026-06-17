@@ -282,13 +282,13 @@ class UnitreeA1Env(gym.Env):
 		))
 
 		total_reward = (
-			1.5 * cos_sim * speed_reward +
-			0.25 * angular_vel_reward #+
+			0.8 * cos_sim * speed_reward +
+			0.2 * angular_vel_reward #+
 			# 0.25 * height_reward
 		)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
-		fall_penalty = -25 if self._is_fallen() else 0.0
+		fall_penalty = -1 if self._is_fallen() else 0.0
 
 		return total_reward + fall_penalty, {
 			"velocity_direction": cos_sim,
