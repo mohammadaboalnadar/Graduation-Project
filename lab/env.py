@@ -278,7 +278,7 @@ class UnitreeA1Env(gym.Env):
 			(1.0 * pitch_penalty) +
 			(1.0 * roll_penalty) +
 			(0.5 * symmetry_penalty) +
-			(0.0 * action_2nd_derivative_penalty)
+			(0.005 * action_2nd_derivative_penalty)
 		))
 
 		total_reward = (

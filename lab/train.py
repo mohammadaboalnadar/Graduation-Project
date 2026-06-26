@@ -55,8 +55,8 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "18.13"
-TOTAL_TIMESTEPS = 30_000_000
+VERSION = "18.14"
+TOTAL_TIMESTEPS = 100_000_000
 CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 20*50 # N seconds at 50Hz
 N_ENVS = 8
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 	# 	print("TensorBoard not found in PATH")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
-	env = VecNormalize(env, norm_obs=False, gamma=0.99, norm_reward=True, clip_reward=10.0)
+	env = VecNormalize(env, norm_obs=False, gamma=0.9668371382880251, norm_reward=True, clip_reward=10.0)
 
 	# Load existing model if available, otherwise create new one
 	modelExists = Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists()
@@ -161,8 +161,8 @@ if __name__ == "__main__":
 		print(f"Loading existing model a1_walk_v{VERSION}.zip")
 		env = VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env, custom_objects={
-			"learning_rate": get_linear_fn(3e-4, 1e-5, 1),
-			"ent_coef": 0.01
+			"learning_rate": get_linear_fn(1e-5, 1e-5, 1),
+			# "ent_coef": 0.01
 		})
 
 		# model.learning_rate = get_linear_fn(3e-4, 1e-5, 1)
@@ -180,22 +180,22 @@ if __name__ == "__main__":
 			env,
 			# device="cpu",
 			use_sde=True,          # better exploration in continuous action spaces
-			sde_sample_freq=64,   # how many steps to wait before resampling noise
+			sde_sample_freq=1,   # how many steps to wait before resampling noise
 			# ── Rollout ────────────────────────────────────────────────────
-			n_steps=2**12,           # larger buffer = more stable gradient estimates
+			n_steps=2**14,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
-			batch_size=2**9,
-			n_epochs=9,             # reduced from 10 — less reuse per rollout
+			batch_size=2**7,
+			n_epochs=11,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
 			learning_rate=get_linear_fn(3e-4, 1e-5, 1),
 			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
-			gamma=0.9603819920758294,
-			gae_lambda=0.9156653294830852,
+			gamma=0.9668371382880251,
+			gae_lambda=0.9497493145865786,
 			# ── Entropy ───────────────────────────────────────────────────
-			ent_coef=0.0,         # small but nonzero — keeps exploration alive
+			ent_coef=0.007415780779208144,         # small but nonzero — keeps exploration alive
 			# ── Value function ────────────────────────────────────────────
 			vf_coef=0.5,
 			max_grad_norm=0.5,      # gradient clipping — extra protection against explosions
@@ -215,11 +215,11 @@ if __name__ == "__main__":
 
 	try:
 		model.learn(
-			total_timesteps=TOTAL_TIMESTEPS,# - model.num_timesteps,
+			total_timesteps=TOTAL_TIMESTEPS - model.num_timesteps,
 			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,
-			# reset_num_timesteps = not modelExists
+			reset_num_timesteps = not modelExists
 		)
 	except KeyboardInterrupt:
 		print("Training interrupted by user. Saving model...")

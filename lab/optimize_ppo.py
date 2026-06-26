@@ -1,5 +1,5 @@
 import os
-# python lab\optimize_ppo.py --study-name "a1_walk_ppo_optuna_staged" --tensorboard-log "D:\Files\Scripts\py\Graduation Project\lab\tb_logs\optuna2" --n-trials 300 --warmup-trials 50 --warmup-timesteps 1000000 --refine-trials 300 --refine-timesteps 5000000 --final-timesteps 20000000
+# python lab\optimize_ppo.py --study-name "a1_walk_ppo_optuna_long" --tensorboard-log "D:\Files\Scripts\py\Graduation Project\lab\tb_logs\optuna3" --n-trials 300 --warmup-trials 0 --refine-trials 0 --final-timesteps 20000000
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import argparse
@@ -57,8 +57,8 @@ OPTUNA_DIR.mkdir(parents=True, exist_ok=True)
 
 N_ENVS = 8
 DEFAULT_N_TRIALS = 50
-DEFAULT_N_EVALUATIONS = 4
-DEFAULT_N_EVAL_EPISODES = 5
+DEFAULT_N_EVALUATIONS = 20
+DEFAULT_N_EVAL_EPISODES = 10
 DEFAULT_WARMUP_TRIALS = 10
 DEFAULT_WARMUP_TIMESTEPS = 500_000
 DEFAULT_REFINE_TRIALS = 25
@@ -87,13 +87,14 @@ def make_env(xml_path: Path, max_episode_steps: int):
 def sample_ppo_params(trial: optuna.Trial) -> dict:
 	return {
 		"use_sde": True,
-		"sde_sample_freq": trial.suggest_categorical("sde_sample_freq", [16, 32, 64, 128, 256, 512]),
-		"n_steps": 2**trial.suggest_int("n_steps_pow", 5, 12),
-		"batch_size": 2**trial.suggest_int("batch_size_pow", 8, 14),
-		"n_epochs": trial.suggest_int("n_epochs", 3, 10),
+		"sde_sample_freq": trial.suggest_categorical("sde_sample_freq_pow", [-1, 0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512]),
+		"n_steps": 2**trial.suggest_int("n_steps_pow", 8, 20),
+		"batch_size": 2**trial.suggest_int("batch_size_pow", 4, 14),
+		"n_epochs": trial.suggest_int("n_epochs", 3, 20),
 		"gamma": trial.suggest_float("gamma", 0.95, 0.9999),
 		"gae_lambda": trial.suggest_float("gae_lambda", 0.8, 0.99),
 		"learning_rate": trial.suggest_float("learning_rate", 3e-5, 3e-3, log=True),
+		"ent_coef": trial.suggest_float("ent_coef", 0.0, 0.05),
 	}
 
 
@@ -307,7 +308,7 @@ def main() -> None:
 	torch.set_num_threads(1)
 
 	sampler = TPESampler(n_startup_trials=min(10, args.n_trials), multivariate=True)
-	pruner = MedianPruner(n_startup_trials=min(10, args.n_trials), n_warmup_steps=max(DEFAULT_N_EVALUATIONS // 3, 1))
+	pruner = MedianPruner(n_startup_trials=0, n_warmup_steps=max(DEFAULT_N_EVALUATIONS // 3, 1))
 	study = optuna.create_study(
 		direction="maximize",
 		study_name=args.study_name,
