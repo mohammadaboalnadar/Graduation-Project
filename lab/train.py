@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "18.14"
+VERSION = "18.15"
 TOTAL_TIMESTEPS = 100_000_000
 CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 20*50 # N seconds at 50Hz
@@ -161,7 +161,7 @@ if __name__ == "__main__":
 		print(f"Loading existing model a1_walk_v{VERSION}.zip")
 		env = VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
 		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env, custom_objects={
-			"learning_rate": get_linear_fn(1e-5, 1e-5, 1),
+			"learning_rate": get_linear_fn(3e-4, 1e-5, 1),
 			# "ent_coef": 0.01
 		})
 
@@ -180,20 +180,20 @@ if __name__ == "__main__":
 			env,
 			# device="cpu",
 			use_sde=True,          # better exploration in continuous action spaces
-			sde_sample_freq=1,   # how many steps to wait before resampling noise
-			# ── Rollout ────────────────────────────────────────────────────
-			n_steps=2**14,           # larger buffer = more stable gradient estimates
+			sde_sample_freq=16,   # how many steps to wait before resampling noise
+			# ── Rollout ───────────────────────────────────────────────────
+			n_steps=2**16,           # larger buffer = more stable gradient estimates
 			# ── Optimization ──────────────────────────────────────────────
-			batch_size=2**7,
-			n_epochs=11,             # reduced from 10 — less reuse per rollout
+			batch_size=2**12,
+			n_epochs=20,             # reduced from 10 — less reuse per rollout
 			# ── Schedules — the fix for every previous collapse ───────────
 			learning_rate=get_linear_fn(3e-4, 1e-5, 1),
 			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 			# ── Stability guards ──────────────────────────────────────────
 			target_kl=0.02,         # hard stop if policy drifts too far per update
 			# ── Discount and GAE ──────────────────────────────────────────
-			gamma=0.9668371382880251,
-			gae_lambda=0.9497493145865786,
+			gamma=0.99,
+			gae_lambda=0.95,
 			# ── Entropy ───────────────────────────────────────────────────
 			ent_coef=0.007415780779208144,         # small but nonzero — keeps exploration alive
 			# ── Value function ────────────────────────────────────────────

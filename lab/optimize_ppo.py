@@ -1,5 +1,5 @@
 import os
-# python lab\optimize_ppo.py --study-name "a1_walk_ppo_optuna_long" --tensorboard-log "D:\Files\Scripts\py\Graduation Project\lab\tb_logs\optuna3" --n-trials 300 --warmup-trials 0 --refine-trials 0 --final-timesteps 20000000
+# python lab\optimize_ppo.py --study-name "a1_walk_ppo_optuna_long" --tensorboard-log "D:\Files\Scripts\py\Graduation Project\lab\optuna_tb_logs\optuna3" --n-trials 300 --warmup-trials 0 --refine-trials 0 --final-timesteps 20000000
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import argparse
@@ -66,7 +66,7 @@ DEFAULT_REFINE_TIMESTEPS = 3_000_000
 DEFAULT_FINAL_TIMESTEPS = 15_000_000
 DEFAULT_MAX_EPISODE_STEPS = 20 * 50
 DEFAULT_BATCH_SIZE = 1024
-DEFAULT_TENSORBOARD_LOG = ROOT_DIR / "lab" / "tb_logs" / "optuna"
+DEFAULT_TENSORBOARD_LOG = ROOT_DIR / "lab" / "optuna_tb_logs" / "optuna"
 DEFAULT_TENSORBOARD_LOG.mkdir(parents=True, exist_ok=True)
 
 
