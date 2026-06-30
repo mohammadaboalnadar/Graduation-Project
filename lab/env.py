@@ -65,7 +65,11 @@ class UnitreeA1Env(gym.Env):
 		self.ref_vel     = np.zeros(3, dtype=np.float32)  # [vx, vy, wz] [m/s, m/s, rad/s]
 		self.ref_height  = 0.28
 
-		# ── Rendering setup ───────────────────────────────────────────
+		# ── Penalty Weights ───────────────────────────────────────────
+
+		self.penalty_fades = {}
+
+		# ── Rendering setup ──────────────────────────────────────────
 		self.render_mode = render_mode
 		self._viewer: mujoco.viewer.MjViewer | mujoco.Renderer | None = None
 		self._cam      = None
@@ -79,6 +83,10 @@ class UnitreeA1Env(gym.Env):
 		"""
 		self.ref_vel  = np.array([vx, vy, wz], dtype=np.float32)
 		self.ref_height = height
+
+	def set_penalty_fades(self, new_fades: dict):
+		"""Receiver method called by the callback to update the dictionary."""
+		self.penalty_fades.update(new_fades)
 
 	# ──────────────────────────────────────────────────────────────────
 	def reset(self, seed=None, options=None):
@@ -270,16 +278,15 @@ class UnitreeA1Env(gym.Env):
 		symmetry_penalty = diagonal_symmetry_penalty
 
 		# ── Combine everything ─────────────────────────────────────────────
-
-		penalty_multiplier = np.exp(0.25 * (
-			(1.0 * hip_similarity) +
-			(0.02 * pose_similarity) +
-			(0.25 * vertical_vel) +
-			(1.0 * pitch_penalty) +
-			(1.0 * roll_penalty) +
-			(0.5 * symmetry_penalty) +
-			(0.005 * action_2nd_derivative_penalty)
-		))
+		penalty_sum = (
+			(1.0 * hip_similarity * self.penalty_fades.get("hip_pose", 1.0)) +
+			(0.02 * pose_similarity * self.penalty_fades.get("pose", 1.0)) +
+			(0.25 * vertical_vel * self.penalty_fades.get("vertical_velocity", 1.0)) +
+			(1.0 * pitch_penalty * self.penalty_fades.get("orientation", 1.0)) +
+			(1.0 * roll_penalty * self.penalty_fades.get("orientation", 1.0)) +
+			(0.5 * symmetry_penalty * self.penalty_fades.get("symmetry", 1.0)) +
+			(0.005 * action_2nd_derivative_penalty * self.penalty_fades.get("action_accel", 1.0))
+		)
 
 		total_reward = (
 			0.8 * cos_sim * speed_reward +
@@ -290,22 +297,21 @@ class UnitreeA1Env(gym.Env):
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -1 if self._is_fallen() else 0.0
 
-		return total_reward + fall_penalty, {
-			"velocity_direction": cos_sim,
-			"velocity_magnitude": speed_reward,
-			"angular_velocity": angular_vel_reward,
-			"height": height_reward,
-			"hip_similarity": hip_similarity,
-			"pose_similarity": pose_similarity,
-			"action_2nd_derivative": action_2nd_derivative_penalty,
-			"vertical_velocity": vertical_vel,
-			"a_pitch_error": pitch_penalty,
-			"a_roll_error": roll_penalty,
+		return total_reward + penalty_sum + fall_penalty, {
+			"info/velocity_direction": cos_sim,
+			"info/velocity_magnitude": speed_reward,
+			"reward/velocity": cos_sim * speed_reward,
+			"reward/angular_velocity": angular_vel_reward,
+			"reward/height": height_reward,
+			"penalty/hip_similarity": hip_similarity,
+			"penalty/pose_similarity": pose_similarity,
+			"penalty/action_2nd_derivative": action_2nd_derivative_penalty,
+			"penalty/vertical_velocity": vertical_vel,
+			"penalty/a_pitch_error": pitch_penalty,
+			"penalty/a_roll_error": roll_penalty,
 			# "energy_penalty": energy_penalty,
-			"symmetry_penalty": symmetry_penalty,
-			"fall_penalty": fall_penalty,
-			"_total_reward": total_reward,
-			"_penalty_multiplier": penalty_multiplier
+			"penalty/symmetry": symmetry_penalty,
+			"penalty/fall": fall_penalty,
 		}
 
 	# ──────────────────────────────────────────────────────────────────

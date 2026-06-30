@@ -3,6 +3,7 @@ lab/tb_logs/*
 lab/optuna_tb_logs/*
 archive
 logs
+wandb
 src
 */__pycache__
 Models/checkpoints

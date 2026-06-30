@@ -1,4 +1,6 @@
-import os; os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+import os
+
+import wandb; os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 import io
 import torch
@@ -29,19 +31,16 @@ torch.load = _safe_load
 # ---------------------------------------------------------------------
 
 import mujoco
+import wandb
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.utils import get_linear_fn
+from stable_baselines3.common.utils import LinearSchedule
 from env import UnitreeA1Env
 from pathlib import Path
 import multiprocessing
-import subprocess
-import shutil
-import threading
-import time
 
 xmlPath = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
 modelsPath = r".\Models"
@@ -55,11 +54,57 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "18.15"
-TOTAL_TIMESTEPS = 100_000_000
+VERSION = "19.0"
+TOTAL_TIMESTEPS = 500_000_000
 CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 20*50 # N seconds at 50Hz
 N_ENVS = 8
+
+SCHEDULES_UPDATE_FREQ = 10_000
+SCHEDULES = {
+	"pose": {"start": 0, "end": 100_000_000},
+	"hip_pose": {"start": 0, "end": 100_000_000},
+	"vertical_velocity": {"start": 20_000_000, "end": 50_000_000},
+	"orientation": {"start": 0, "end": 50_000_000},
+	"symmetry": {"start": 40_000_000, "end": 100_000_000},
+	"action_accel": {"start": 75_000_000, "end": 200_000_000}
+}
+
+LR_START = 3e-4
+LR_END = 1e-5
+LR_END_FRACTION = 0.25
+HYPERPARAMS = {
+	"use_sde":True,          # better exploration in continuous action spaces
+	"sde_sample_freq":16,   # how many steps to wait before resampling noise
+	# ── Rollout ───────────────────────────────────────────────────
+	"n_steps":2**16,           # larger buffer = more stable gradient estimates
+	# ── Optimization ──────────────────────────────────────────────
+	"batch_size":2**12,
+	"n_epochs":20,
+	"learning_rate":LinearSchedule(LR_START, LR_END, LR_END_FRACTION),
+	# "clip_range":#LinearSchedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
+	"clip_range_vf":0.2,
+	# ── Stability guards ──────────────────────────────────────────
+	"target_kl":0.02,         # hard stop if policy drifts too far per update
+	"max_grad_norm":0.5,      # gradient clipping — extra protection against explosions
+	# ── Discount and GAE ──────────────────────────────────────────
+	"gamma":0.99,
+	"gae_lambda":0.95,
+	# ── Entropy ───────────────────────────────────────────────────
+	"ent_coef":0.007415780779208144,         # small but nonzero — keeps exploration alive
+	# ── Value function ────────────────────────────────────────────
+	"vf_coef":0.5,
+	# ── Policy kwargs ─────────────────────────────────────────────
+	"policy_kwargs":{
+		"net_arch":[256, 256],
+		# "activation_fn":torch.nn.ELU,
+		# "use_expln":True,
+		"squash_output":True,
+		"full_std":True,
+
+		# "log_std_init":-2.0
+	}
+}
 
 #[]#####################
 
@@ -69,21 +114,18 @@ def make_env(xml):
 	return _init
 
 class LogCallback(BaseCallback):
-	def _on_step(self):
-		# Log episode stats periodically
-		# if len(self.model.ep_info_buffer) > 0 and self.n_calls % 10_000 == 0:
-		# 	mean_reward = np.mean([e["r"] for e in self.model.ep_info_buffer])
-		# 	mean_len    = np.mean([e["l"] for e in self.model.ep_info_buffer])
-			# print(f"steps={self.num_timesteps:>8} | mean_ep_reward={mean_reward:>8.2f} | mean_ep_len={mean_len:>6.0f}")
+    def _on_step(self):
+        infos = self.locals.get("infos", [])
+        
+        if infos and "reward_components" in infos[0]:
+            # Calculate the mean for each component across all parallel environments
+            for key in infos[0]["reward_components"].keys():
+                avg_val = np.mean([info["reward_components"][key] for info in infos if "reward_components" in info])
+                
+                # Record the averaged value
+                self.logger.record(f"rewards/{key}", avg_val)
 
-		# Log reward components to TensorBoard every step
-		infos = self.locals.get("infos", [])
-		for info in infos:
-			if "reward_components" in info:
-				for k, v in info["reward_components"].items():
-					self.logger.record(f"rewards/{k}", v)
-
-		return True
+        return True
 
 class CheckpointCallback(BaseCallback):
 	def __init__(self, save_freq, save_path, vec_normalize):
@@ -100,27 +142,43 @@ class CheckpointCallback(BaseCallback):
 			vecnorm_path = self.save_path / f"{steps}_steps_vecnorm.pkl"
 			self.model.save(str(model_path))
 			self.vec_normalize.save(str(vecnorm_path))
-			print(f"Checkpoint saved at {steps} steps → {model_path.name}")
+			print(f"Checkpoint saved at {steps} steps → {model_path.absolute()}")
 		return True
+	
+class ModularCurriculumCallback(BaseCallback):
+    def __init__(self, schedules: dict, update_freq: int = 10_000, verbose=0):
+        super().__init__(verbose)
+        self.schedules = schedules
+        self.update_freq = update_freq
+        self.current_fades = {k: 0.0 for k in schedules.keys()}
 
-def make_schedule(start_val: float, end_val: float, total_steps: int, completed_steps: int = 0):
-    """
-    Returns a schedule function that decays from start_val to end_val over
-    total_steps, accounting for already-completed steps on resume.
-    Progress is based on absolute timesteps so resuming mid-run works correctly.
-    """
-    def schedule(progress_remaining: float) -> float:
-        # SB3 passes progress_remaining = 1.0 at start, 0.0 at end
-        # Convert to absolute current step
-        current_step = (1.0 - progress_remaining) * total_steps
+    def _on_step(self) -> bool:
+        # Throttle IPC overhead: Only broadcast every N steps
+        if self.num_timesteps % self.update_freq != 0:
+            return True
 
-        # Offset by completed steps so resumed runs continue the curve
-        adjusted_step = current_step + completed_steps
-        fraction = min(adjusted_step / total_steps, 1.0)
+        step = self.num_timesteps
 
-        return start_val + fraction * (end_val - start_val)
+        for key, bounds in self.schedules.items():
+            start, end = bounds["start"], bounds["end"]
+            
+            # Calculate linear interpolation
+            if step <= start:
+                fade = 0.0
+            elif step >= end:
+                fade = 1.0
+            else:
+                fade = (step - start) / (end - start)
+                
+            self.current_fades[key] = fade
+            
+            # Log to TensorBoard so you can see the curves
+            self.logger.record(f"curriculum/{key}_fade", fade)
 
-    return schedule
+        # Broadcast the updated dictionary to all isolated environments
+        self.training_env.env_method("set_penalty_fades", self.current_fades)
+        
+        return True
 
 if __name__ == "__main__":
 	# See how many cores you have
@@ -130,93 +188,47 @@ if __name__ == "__main__":
 	# Leave 1-2 cores free for the OS and main training thread
 	print(f"Using {N_ENVS} envs")
 
-	# # check if model version already exists
-	# if Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists():
-	# 	response = input(f"Model [a1_walk_v{VERSION}.zip] already exists. Continue training? (y/n): ")
-	# 	if response.lower() != "y":
-	# 		print("Aborting training.")
-	# 		exit()
-	
-	n_envs = N_ENVS or multiprocessing.cpu_count() - 2
-	print(f"Using {n_envs} envs for training")
+	run = wandb.init(
+		project="unitree_a1_rl",
+		name=f"a1_walk_v{VERSION}",
+		config={
+			# Architecture
+			"version": VERSION,
+			"n_envs": N_ENVS,
+			"max_episode_steps": MAX_EPISODE_STEPS,
 
-	# # Launch tensorboard if available (logdir relative to repo root)
-	# tb_cmd = ["tensorboard", "--logdir", "./lab/tb_logs/"]
-	# if shutil.which("tensorboard") is not None:
-	# 	try:
-	# 		subprocess.Popen(tb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-	# 		print("TensorBoard started: tensorboard --logdir ./lab/tb_logs/")
-	# 		print("Live view: http://localhost:6006/")
-	# 	except Exception:
-	# 		print("Failed to start TensorBoard")
-	# else:
-	# 	print("TensorBoard not found in PATH")
+			# PPO Hyperparameters
+			"lr_start": LR_START,
+			"lr_end": LR_END,
+			"lr_end_fraction": LR_END_FRACTION,
+			**{k: str(v) for k, v in HYPERPARAMS.items()}
+		},
+		sync_tensorboard=True
+	)
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
-	env = VecNormalize(env, norm_obs=False, gamma=0.9668371382880251, norm_reward=True, clip_reward=10.0)
+	env = VecNormalize(env, norm_obs=False, gamma=HYPERPARAMS.get("gamma", 0.99), norm_reward=True, clip_reward=10.0)
 
 	# Load existing model if available, otherwise create new one
 	modelExists = Path(f"{modelsPath}/a1_walk_v{VERSION}.zip").exists()
 	if modelExists:
 		print(f"Loading existing model a1_walk_v{VERSION}.zip")
 		env = VecNormalize.load(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl", env)
-		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env, custom_objects={
-			"learning_rate": get_linear_fn(3e-4, 1e-5, 1),
-			# "ent_coef": 0.01
-		})
-
-		# model.learning_rate = get_linear_fn(3e-4, 1e-5, 1)
-		# model.
-		# model.clip_range    = get_linear_fn(0.5,  0.2, 0.5)
-		# model.target_kl     = None
-		# model.ent_coef	  = 0.01
-		
-		# model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
-		# model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)
+		model = PPO.load(f"{modelsPath}/a1_walk_v{VERSION}.zip", env=env)#, custom_objects={
+		# 	"learning_rate": get_linear_fn(3e-4, 1e-5, 1),
+		# 	"ent_coef": 0.01
+		# })
 	else:
 		print("Creating new model")
-		model = PPO(
-			"MlpPolicy",
-			env,
-			# device="cpu",
-			use_sde=True,          # better exploration in continuous action spaces
-			sde_sample_freq=16,   # how many steps to wait before resampling noise
-			# ── Rollout ───────────────────────────────────────────────────
-			n_steps=2**16,           # larger buffer = more stable gradient estimates
-			# ── Optimization ──────────────────────────────────────────────
-			batch_size=2**12,
-			n_epochs=20,             # reduced from 10 — less reuse per rollout
-			# ── Schedules — the fix for every previous collapse ───────────
-			learning_rate=get_linear_fn(3e-4, 1e-5, 1),
-			# clip_range=get_linear_fn(0.4, 0.05, 1),#make_schedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
-			# ── Stability guards ──────────────────────────────────────────
-			target_kl=0.02,         # hard stop if policy drifts too far per update
-			# ── Discount and GAE ──────────────────────────────────────────
-			gamma=0.99,
-			gae_lambda=0.95,
-			# ── Entropy ───────────────────────────────────────────────────
-			ent_coef=0.007415780779208144,         # small but nonzero — keeps exploration alive
-			# ── Value function ────────────────────────────────────────────
-			vf_coef=0.5,
-			max_grad_norm=0.5,      # gradient clipping — extra protection against explosions
-			# ── Logging ───────────────────────────────────────────────────
-			verbose=0,
-			tensorboard_log="./lab/tb_logs/",
-			policy_kwargs=dict(
-				net_arch=[256, 256],
-				# activation_fn=torch.nn.ELU,
-				# use_expln=True,
-				squash_output=True,
-				full_std=True,
-
-				# log_std_init=-2.0
-			)
-		)
-
+		model = PPO("MlpPolicy", env, verbose=0, tensorboard_log="./lab/tb_logs/", **HYPERPARAMS)
 	try:
 		model.learn(
 			total_timesteps=TOTAL_TIMESTEPS - model.num_timesteps,
-			callback=[LogCallback(), CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)],
+			callback=[
+				LogCallback(),
+				ModularCurriculumCallback(schedules=SCHEDULES, update_freq=SCHEDULES_UPDATE_FREQ),
+				CheckpointCallback(save_freq=CHECKPOINT_FREQ, save_path=f"{modelsPath}/checkpoints/v{VERSION}", vec_normalize=env)
+			],
 			tb_log_name=f"a1_walk_v{VERSION}",
 			progress_bar=True,
 			reset_num_timesteps = not modelExists
@@ -227,6 +239,9 @@ if __name__ == "__main__":
 		print(f"An error occurred: {e}")
 	finally:
 		model.save(f"{modelsPath}/a1_walk_v{VERSION}.zip")
+		print(f"Model saved to {Path(f'{modelsPath}/a1_walk_v{VERSION}.zip').absolute()}")
 		env.save(f"{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl")
 		env.close()
-		print(f"Model saved to {Path(f'{modelsPath}/a1_walk_v{VERSION}.zip').absolute()}")
+		print(f"VecNormalize saved to {Path(f'{modelsPath}/a1_walk_v{VERSION}_vecnormalize.pkl').absolute()}")
+		run.finish()
+		print("WandB run closed.")
