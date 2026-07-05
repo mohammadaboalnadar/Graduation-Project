@@ -101,21 +101,18 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
-		# if self.np_random.choice([True, False]):
-		# 	self.ref_vel   = np.array([
-		# 		self.np_random.uniform(-2.5, 2.5),
-		# 		self.np_random.uniform(-1, 1),
-		# 		0
-		# 	], dtype=np.float32)
-		# else:
-		# 	self.ref_vel = np.zeros(3, dtype=np.float32)
+		# self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
+		if self.np_random.choice([True, False]):
+			ang = self.np_random.uniform(-np.pi, np.pi)
+			self.ref_vel   = np.array([np.cos(ang), np.sin(ang), 0], dtype=np.float32)
+		else:
+			self.ref_vel = np.zeros(3, dtype=np.float32)
 		
-		# if self.np_random.choice([True, False]):
-		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
-		# self.ref_vel = np.array([self.np_random.uniform(0, 3.0),0,0], dtype=np.float32)
+		if self.np_random.choice([True, False]):
+			self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
 
 		# self.ref_height = self.np_random.uniform(0.2, 0.36)
+		self.ref_height = self.np_random.uniform(-1.0, 1.0)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 		self.last_last_action = np.zeros(self.model.nu, dtype=np.float32)
 		self.running_pitch = 0.0
@@ -194,8 +191,8 @@ class UnitreeA1Env(gym.Env):
 			joint_vel / 21.0, # Unitree A1 max joint speed is around 21 rad/s, so this normalizes to ~[-1, 1]
 			self.last_action, # already in [-1, 1]
 			running_skew,
-			self.ref_vel / 3.0, # [vx, vy, wz] # normalize to ~[-1, 1] range based on expected max speeds
-			np.array([self.ref_height - 0.28 / 0.08], dtype=np.float32), # normalize height to ~[-1, 1] range around nominal height of 0.28m with expected variation of ±0.08m
+			self.ref_vel,
+			np.array([self.ref_height], dtype=np.float32),
 		]).astype(np.float32)
 
 	# ──────────────────────────────────────────────────────────────────
@@ -214,9 +211,9 @@ class UnitreeA1Env(gym.Env):
 			sin_yaw * world_vel[0] + cos_yaw * world_vel[1]
 		], dtype=np.float32)  # [vx, vy] in robot frame
 		
-		ref_vel    = self.ref_vel[0:2]              # [vx, vy] (already robot frame)
-		actual_speed = np.linalg.norm(actual_vel)
-		ref_speed = np.linalg.norm(ref_vel)
+		ref_vel    = np.array([5 * self.ref_vel[0], 2.5 * self.ref_vel[1]])              # [vx, vy] (already robot frame)
+		actual_speed = float(np.linalg.norm(actual_vel))
+		ref_speed = float(np.linalg.norm(ref_vel))
 
 		# ── Velocity reward ───────────────────────────────────────────
 		# Direction: cosine similarity between actual and target velocity
@@ -238,7 +235,8 @@ class UnitreeA1Env(gym.Env):
 		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0, 1.0)
 
 		# ── Height reward ─────────────────────────────────────────────
-		height_reward = self.gaus(self.data.qpos[2] - self.ref_height, 100.0)
+		ref_height = self.ref_height * 0.08 + 0.28 # range around nominal height of 0.28m with variation of ±0.08m
+		height_reward = self.gaus(self.data.qpos[2] - ref_height, 100.0)
 
 		# ── Stability penalties ───────────────────────────────────────
 		# Penalize only hip joints (indices 7, 10, 13, 16)

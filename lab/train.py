@@ -54,20 +54,20 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "19.0"
-TOTAL_TIMESTEPS = 500_000_000
-CHECKPOINT_FREQ = 5_000_000  # Save a checkpoint every N timesteps
-MAX_EPISODE_STEPS = 20*50 # N seconds at 50Hz
+VERSION = "19.1"
+TOTAL_TIMESTEPS = 750_000_000
+CHECKPOINT_FREQ = 10_000_000  # Save a checkpoint every N timesteps
+MAX_EPISODE_STEPS = 10*50 # N seconds at 50Hz
 N_ENVS = 8
 
 SCHEDULES_UPDATE_FREQ = 10_000
 SCHEDULES = {
-	"pose": {"start": 0, "end": 100_000_000},
-	"hip_pose": {"start": 0, "end": 100_000_000},
+	"pose": {"start": 200_000_000, "end": 350_000_000},
+	"hip_pose": {"start": 200_000_000, "end": 350_000_000},
 	"vertical_velocity": {"start": 20_000_000, "end": 50_000_000},
-	"orientation": {"start": 0, "end": 50_000_000},
-	"symmetry": {"start": 40_000_000, "end": 100_000_000},
-	"action_accel": {"start": 75_000_000, "end": 200_000_000}
+	"orientation": {"start": 50_000_000, "end": 100_000_000},
+	"symmetry": {"start": 300_000_000, "end": 500_000_000},
+	"action_accel": {"start": 100_000_000, "end": 200_000_000}
 }
 
 LR_START = 3e-4
@@ -114,18 +114,38 @@ def make_env(xml):
 	return _init
 
 class LogCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        self.rollout_rewards = {}
+        self.step_counts = {}
+
     def _on_step(self):
         infos = self.locals.get("infos", [])
         
         if infos and "reward_components" in infos[0]:
-            # Calculate the mean for each component across all parallel environments
-            for key in infos[0]["reward_components"].keys():
-                avg_val = np.mean([info["reward_components"][key] for info in infos if "reward_components" in info])
-                
-                # Record the averaged value
-                self.logger.record(f"rewards/{key}", avg_val)
+            # Accumulate the components across all parallel environments
+            for info in infos:
+                if "reward_components" in info:
+                    for key, val in info["reward_components"].items():
+                        if key not in self.rollout_rewards:
+                            self.rollout_rewards[key] = 0.0
+                            self.step_counts[key] = 0
+                        self.rollout_rewards[key] += val
+                        self.step_counts[key] += 1
 
         return True
+
+    def _on_rollout_end(self):
+        # Calculate the true mean of the entire batch at rollout end
+        if self.step_counts:
+            for key in self.rollout_rewards.keys():
+                if self.step_counts[key] > 0:
+                    avg_val = self.rollout_rewards[key] / self.step_counts[key]
+                    self.logger.record(f"rewards/{key}", avg_val)
+            
+            # Reset the accumulators for the next rollout
+            self.rollout_rewards = {}
+            self.step_counts = {}
 
 class CheckpointCallback(BaseCallback):
 	def __init__(self, save_freq, save_path, vec_normalize):
@@ -205,6 +225,7 @@ if __name__ == "__main__":
 		},
 		sync_tensorboard=True
 	)
+	wandb.define_metric("*", step_metric="global_step")
 
 	env = SubprocVecEnv([make_env(xmlPath) for _ in range(N_ENVS)])
 	env = VecNormalize(env, norm_obs=False, gamma=HYPERPARAMS.get("gamma", 0.99), norm_reward=True, clip_reward=10.0)
