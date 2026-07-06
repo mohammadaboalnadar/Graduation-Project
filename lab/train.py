@@ -54,34 +54,34 @@ dt = float(model.opt.timestep)
 
 #[OPTIONS]:
 
-VERSION = "19.1"
-TOTAL_TIMESTEPS = 750_000_000
+VERSION = "19.3"
+TOTAL_TIMESTEPS = 1_500_000_000
 CHECKPOINT_FREQ = 10_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 10*50 # N seconds at 50Hz
 N_ENVS = 8
 
 SCHEDULES_UPDATE_FREQ = 10_000
 SCHEDULES = {
-	"pose": {"start": 200_000_000, "end": 350_000_000},
-	"hip_pose": {"start": 200_000_000, "end": 350_000_000},
-	"vertical_velocity": {"start": 20_000_000, "end": 50_000_000},
-	"orientation": {"start": 50_000_000, "end": 100_000_000},
+	"pose": {"start": 900_000_000, "end": 1_000_000_000},
+	"hip_pose": {"start": 750_000_000, "end": 900_000_000},
+	"vertical_velocity": {"start": 50_000_000, "end": 200_000_000},
+	"orientation": {"start": 200_000_000, "end": 400_000_000},
 	"symmetry": {"start": 300_000_000, "end": 500_000_000},
-	"action_accel": {"start": 100_000_000, "end": 200_000_000}
+	"action_accel": {"start": 500_000_000, "end": 750_000_000}
 }
 
 LR_START = 3e-4
 LR_END = 1e-5
 LR_END_FRACTION = 0.25
 HYPERPARAMS = {
-	"use_sde":True,          # better exploration in continuous action spaces
-	"sde_sample_freq":16,   # how many steps to wait before resampling noise
+	# "use_sde":True,          # better exploration in continuous action spaces
+	# "sde_sample_freq":16,   # how many steps to wait before resampling noise
 	# ── Rollout ───────────────────────────────────────────────────
 	"n_steps":2**16,           # larger buffer = more stable gradient estimates
 	# ── Optimization ──────────────────────────────────────────────
 	"batch_size":2**12,
 	"n_epochs":20,
-	"learning_rate":LinearSchedule(LR_START, LR_END, LR_END_FRACTION),
+	"learning_rate":2e-4,#LinearSchedule(LR_START, LR_END, LR_END_FRACTION),
 	# "clip_range":#LinearSchedule(0.2,  0.02, TOTAL_TIMESTEPS, 0),
 	"clip_range_vf":0.2,
 	# ── Stability guards ──────────────────────────────────────────
@@ -91,7 +91,7 @@ HYPERPARAMS = {
 	"gamma":0.99,
 	"gae_lambda":0.95,
 	# ── Entropy ───────────────────────────────────────────────────
-	"ent_coef":0.007415780779208144,         # small but nonzero — keeps exploration alive
+	"ent_coef":0.01,         # small but nonzero — keeps exploration alive
 	# ── Value function ────────────────────────────────────────────
 	"vf_coef":0.5,
 	# ── Policy kwargs ─────────────────────────────────────────────
@@ -99,8 +99,8 @@ HYPERPARAMS = {
 		"net_arch":[256, 256],
 		# "activation_fn":torch.nn.ELU,
 		# "use_expln":True,
-		"squash_output":True,
-		"full_std":True,
+		# "squash_output":True,
+		# "full_std":True,
 
 		# "log_std_init":-2.0
 	}

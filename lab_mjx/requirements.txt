@@ -1,0 +1,26 @@
+# lab_mjx/requirements.txt
+#
+# MJX + Brax GPU stack for Unitree A1 locomotion training.
+#
+# ── IMPORTANT: Install JAX with CUDA FIRST (before the rest) ──────────────────
+#
+#   pip install "jax[cuda12]"
+#
+# This installs JAX with CUDA 12 support from the standard PyPI index.
+# Verify GPU is detected: python -c "import jax; print(jax.devices())"
+# Expected output: [CudaDevice(id=0)] or similar — NOT [CpuDevice(id=0)]
+#
+# ── Then install the rest ─────────────────────────────────────────────────────
+#
+#   pip install -r lab_mjx/requirements.txt
+#
+# Note: brax pulls in flax and optax automatically.
+# ─────────────────────────────────────────────────────────────────────────────
+
+mujoco
+mujoco-mjx
+brax
+flax
+optax
+wandb
+mediapy
