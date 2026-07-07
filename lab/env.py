@@ -101,18 +101,18 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		# self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
-		if self.np_random.choice([True, False]):
-			ang = self.np_random.uniform(-np.pi, np.pi)
-			self.ref_vel   = np.array([np.cos(ang), np.sin(ang), 0], dtype=np.float32)
-		else:
-			self.ref_vel = np.zeros(3, dtype=np.float32)
+		self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
+		# if self.np_random.choice([True, False]):
+		# 	ang = self.np_random.uniform(-np.pi, np.pi)
+		# 	self.ref_vel   = np.array([np.cos(ang), np.sin(ang), 0], dtype=np.float32)
+		# else:
+		# 	self.ref_vel = np.zeros(3, dtype=np.float32)
 		
-		if self.np_random.choice([True, False]):
-			self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
+		# if self.np_random.choice([True, False]):
+		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
 
 		# self.ref_height = self.np_random.uniform(0.2, 0.36)
-		self.ref_height = self.np_random.uniform(-1.0, 1.0)
+		# self.ref_height = self.np_random.uniform(-1.0, 1.0)
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 		self.last_last_action = np.zeros(self.model.nu, dtype=np.float32)
 		self.running_pitch = 0.0
@@ -226,7 +226,7 @@ class UnitreeA1Env(gym.Env):
 			cos_sim = 1.0
 
 		# Magnitude: gaussian peak when speed matches target
-		speed_reward = self.gaus(actual_speed - ref_speed, 4.0)
+		speed_reward = self.gaus(actual_speed - ref_speed, 4.0, 0.1)
 
 		# Angular velocity:
 		ref_angular_vel = self.ref_vel[2]  # target yaw rate
@@ -286,11 +286,12 @@ class UnitreeA1Env(gym.Env):
 			(0.005 * action_2nd_derivative_penalty * self.penalty_fades.get("action_accel", 1.0))
 		)
 
-		total_reward = (
-			0.8 * cos_sim * speed_reward +
-			0.2 * angular_vel_reward #+
-			# 0.25 * height_reward
-		)
+		rewards = [
+			(4, cos_sim * speed_reward),
+			(2, angular_vel_reward),
+			(1, height_reward)
+		]
+		total_reward = sum(weight * reward for weight, reward in rewards) / sum(weight for weight, _ in rewards)
 		
 		# ── Fall penalty ──────────────────────────────────────────────
 		fall_penalty = -1 if self._is_fallen() else 0.0
