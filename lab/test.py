@@ -19,12 +19,12 @@ VERSION = "19.5"
 SPEED_MULTIPLIER = 1.0  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model
-model = PPO.load(r".\Models\a1_walk_v" + VERSION)
-# model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v18.14\35000000_steps.zip")
+# model = PPO.load(r".\Models\a1_walk_v" + VERSION)
+model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v19.5\430000000_steps")
 
 # Create a render env
 xmlPath = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
-raw_env = UnitreeA1Env(xmlPath, render_mode="human", max_episode_steps=200)
+raw_env = UnitreeA1Env(xmlPath, render_mode="human", max_episode_steps=1000)
 venv = DummyVecEnv([lambda: raw_env])
 env = VecNormalize.load(rf".\Models\a1_walk_v{VERSION}_vecnormalize.pkl", venv)
 # env = VecNormalize.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v16.3\20000000_steps_vecnorm.pkl", venv)
