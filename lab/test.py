@@ -20,7 +20,7 @@ SPEED_MULTIPLIER = 1.0  # Adjust this to speed up or slow down the simulation
 
 # Load the trained model
 # model = PPO.load(r".\Models\a1_walk_v" + VERSION)
-model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v19.5\430000000_steps")
+model = PPO.load(r"D:\Files\Scripts\py\Graduation Project\Models\checkpoints\v19.5\500000000_steps")
 
 # Create a render env
 xmlPath = r".\external\mujoco_menagerie\unitree_a1\scene.xml"
