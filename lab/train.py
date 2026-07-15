@@ -63,7 +63,7 @@ N_ENVS = 8
 SCHEDULES_UPDATE_FREQ = 10_000
 SCHEDULES = {
 	# "pose": {"start": 900_000_000, "end": 1_000_000_000},
-	"hip_pose": {"start": 500_000_000, "end": 1_000_000_000},
+	"hip_pose": {"start": 720_000_000, "end": 850_000_000},
 	"vertical_velocity": {"start": 50_000_000, "end": 200_000_000},
 	"orientation": {"start": 200_000_000, "end": 400_000_000},
 	"symmetry": {"start": 300_000_000, "end": 500_000_000},

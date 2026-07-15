@@ -277,12 +277,12 @@ class UnitreeA1Env(gym.Env):
 
 		# ── Combine everything ─────────────────────────────────────────────
 		penalty_sum = (
-			(0.1 * hip_similarity * self.penalty_fades.get("hip_pose", 0.0)) +
+			(0.4 * hip_similarity * self.penalty_fades.get("hip_pose", 0.0)) +
 			(0.02 * pose_similarity * self.penalty_fades.get("pose", 0.0)) +
-			(0.25 * vertical_vel * self.penalty_fades.get("vertical_velocity", 0.0)) +
-			(1.0 * pitch_penalty * self.penalty_fades.get("orientation", 0.0)) +
-			(1.0 * roll_penalty * self.penalty_fades.get("orientation", 0.0)) +
-			(0.5 * symmetry_penalty * self.penalty_fades.get("symmetry", 0.0)) +
+			(0.25 * vertical_vel * self.penalty_fades.get("vertical_velocity", 1.0)) +
+			(1.0 * pitch_penalty * self.penalty_fades.get("orientation", 1.0)) +
+			(1.0 * roll_penalty * self.penalty_fades.get("orientation", 1.0)) +
+			(0.5 * symmetry_penalty * self.penalty_fades.get("symmetry", 1.0)) +
 			(0.005 * action_2nd_derivative_penalty * self.penalty_fades.get("action_accel", 0.0))
 		)
 
