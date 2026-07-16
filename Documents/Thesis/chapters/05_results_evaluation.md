@@ -17,31 +17,52 @@ To guarantee stable convergence over the 1.5 billion steps, we deploy an unconve
 
 This configuration is significantly larger than typical continuous control setups (which usually use buffer sizes of $2,048$ or $4,096$ steps). By collecting over $524,000$ transitions per policy iteration, the policy updates are computed on a massive and highly diverse set of states, yielding exceptionally low-variance gradient estimates. This configuration prevents policy degradation or catastrophic divergence, ensuring monotonic gait improvement over the long-term training cycle.
 
-**Figure 5.1** (placeholder) shows the training convergence plots over the 1.5 billion training steps. In the early stages (first **[X]** steps), the policy loss fluctuates as the robot discovers standing balance. As the curriculum fades in the vertical velocity, orientation, and symmetry penalties, the mean reward adjusts and stabilizes, plateauing at a high value.
+### 5.1.2 Hyperparameter Optimization via Optuna
+Prior to finalizing the training configuration, a systematic hyperparameter search was conducted using Optuna to identify parameters that promote stable learning. The search was executed using the Tree-structured Parzen Estimator (TPE) sampler for parameter suggestion and a Median Pruner to prune underperforming trials early. 
+
+The study, named `a1_walk_ppo_optuna_long`, ran for a total of **78 trials**, each with a budget of 20 million steps. The outcomes of the trials were:
+- **Completed Trials**: 34 trials (completed the full 20M steps).
+- **Pruned Trials**: 35 trials (terminated early by the Median Pruner due to low reward trajectory).
+- **Failed Trials**: 8 trials (terminated due to policy gradient divergence or solver instability).
+
+The best performing run was **Trial 48**, which achieved a maximum mean evaluation reward of **748.18**. The optimal hyperparameters identified in this trial were:
+- Rollout Steps ($n\_steps$): $2^{14} = 16,384$
+- Mini-batch Size ($batch\_size$): $2^7 = 128$
+- Learning Rate ($lr$): $6.08 \times 10^{-5}$
+- Number of Epochs ($n\_epochs$): 11
+- Discount Factor ($\gamma$): 0.9668
+- GAE Parameter ($\lambda$): 0.9497
+- Entropy Coefficient ($ent\_coef$): 0.0074
+
+Optuna's results demonstrated a strong preference for larger rollout horizons ($n\_steps$) and smaller learning rates to prevent policy collapse. While smaller mini-batch sizes (such as 128) achieved rapid convergence under the 20 million step search limit, manual long-term tests revealed that smaller batches resulted in gait deterioration during extended training. Based on these insights, the final training run scaled the rollout steps to $2^{16} = 65,536$ and the mini-batch size to $2^{12} = 4,096$, providing a highly stable configuration for the 1.5 billion step training cycle.
+
+The complete training progress curves showing reward accumulation, value loss, and policy entropy are visualized in **Figure C.1** in Appendix C.
 
 ---
 
 ## 5.2 Locomotion Performance Evaluation
-To validate the performance of the trained MLP policy, we evaluate its locomotion stability and command tracking accuracy on a flat surface in simulation. 
+To validate the performance of the trained MLP policy, we evaluate its locomotion stability and command tracking accuracy on a flat surface in simulation. We utilize the training checkpoint at **720 million steps** (720M checkpoint), representing the point where the modular curriculum has fully faded in the primary vertical velocity, orientation, and symmetry penalties, but before the hip pose similarity constraints are introduced. At this stage, the policy is optimized for high-speed forward locomotion under a reference command of $5.0\text{ m/s}$.
 
 The evaluation metrics are defined as:
 1. **Mean Velocity Tracking Error**: The root mean square error (RMSE) between the commanded reference velocity ($v_{ref}$) and the actual base velocity ($v$):
    $$RMSE_v = \sqrt{\frac{1}{T}\sum_{t=1}^{T} (v_t - v_{ref,t})^2} \quad (5.1)$$
 2. **Torso Orientation Variance (Gait Smoothness)**: The variance of the roll and pitch angles of the trunk. Lower variance corresponds to a smoother gait with less vertical oscillation.
-3. **Mean Episode Length**: The number of steps the robot stays upright before falling or reaching the episode step limit (max 1000 steps).
+3. **Mean Episode Length**: The number of steps the robot stays upright before falling or reaching the episode step limit (max 500 steps during evaluation).
 
 The performance of the trained policy under nominal flat-ground conditions is summarized in Table 5.1:
 
-| Evaluation Metric | Reference Command | Trained MLP Policy Value |
-| :--- | :---: | :---: |
-| **Forward Velocity ($v_x$)** | $1.00\text{ m/s}$ | **[X.XX] m/s** |
-| **Lateral Velocity ($v_y$)** | $0.00\text{ m/s}$ | **[Y.YY] m/s** |
-| **Yaw Rate ($\omega_z$)** | $0.00\text{ rad/s}$ | **[Z.ZZ] rad/s** |
-| **Velocity Tracking RMSE ($RMSE_v$)** | — | **[X.XX] m/s** |
-| **Torso Pitch Variance** | — | **[X.XX] rad$^2$** |
-| **Torso Roll Variance** | — | **[X.XX] rad$^2$** |
-| **Mean Episode Length** | $1000\text{ steps}$ | **[X] steps** |
-| **Locomotion Success Rate** | — | **[X]%** |
+| Evaluation Metric | Reference Command | Trained MLP Policy Value (720M Checkpoint) |
+| :--- | :--- | :---: |
+| **Forward Velocity ($v_x$)** | $5.00\text{ m/s}$ | **4.21 m/s** (average) |
+| **Lateral Velocity ($v_y$)** | $0.00\text{ m/s}$ | **-0.03 m/s** (average) |
+| **Forward Velocity Tracking RMSE ($RMSE_{v_x}$)** | — | **0.7916 m/s** |
+| **Lateral Velocity Tracking RMSE ($RMSE_{v_y}$)** | — | **0.3694 m/s** |
+| **Torso Pitch Variance** | — | **8.4629 deg$^2$** ($0.0026\text{ rad}^2$) |
+| **Torso Roll Variance** | — | **14.8877 deg$^2$** ($0.0045\text{ rad}^2$) |
+| **Mean Cost of Transport (CoT)** | — | **9.8060** |
+| **Mean Joint Torque Norm** | — | **215.6184 Nm** |
+| **Mean Episode Length** | $500\text{ steps}$ | **500 steps** (no falls) |
+| **Locomotion Success Rate** | — | **100%** (zero falls over 50 eval runs) |
 
 ---
 

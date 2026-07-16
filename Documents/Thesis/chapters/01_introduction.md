@@ -40,3 +40,6 @@ The remainder of this thesis is organized as follows.
 - **Chapter 5: Experimental Evaluation & Results** presents the experimental setup, training convergence curves, and locomotion performance metrics of the trained walking policy on a flat surface.
 - **Chapter 6: The Sim-to-Real Chasm (Discussion)** identifies unmodeled simulation dynamics, details system identification methodologies, and proposes domain randomization parameters needed for future hardware deployment.
 - **Chapter 7: Conclusions & Future Work** summarizes the main findings of the thesis, states the key contributions of the research, and suggests directions for future work.
+- **Appendix A: Training Configuration and Hyperparameters** compiles the hyperparameter comparison table (default vs. Optuna vs. final selected parameters) and details the scaling rationale.
+- **Appendix B: Key Code Implementations** contains Python code blocks for the custom observation vector formatting and modular curriculum scheduling, alongside links to the public GitHub repository.
+- **Appendix C: Supplementary Plots** collects the training convergence logs and evaluation performance charts (velocity tracking and base stability).

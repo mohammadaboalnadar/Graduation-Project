@@ -79,7 +79,9 @@ To keep the robot upright and prevent rollovers, we penalize the rolling pitch a
 
 $$P_{orientation} = - (\bar{\theta}_{pitch}^2 + \bar{\theta}_{roll}^2) \quad (4.10)$$
 
-where $\bar{\theta}_{pitch}$ and $\bar{\theta}_{roll}$ are the running orientation skews. Bounding the cumulative orientation skew stabilizes the torso, which is critical for carrying sensor payloads. As noted in Section 3.3, because this penalty depends on the historical accumulation of pitch and roll, passing the running skew values back to the agent as observations is mathematically necessary. It ensures that the state space remains Markovian, preventing the policy from experiencing partial observability (POMDP) regarding its own cumulative penalty metrics.
+where $\bar{\theta}_{pitch}$ and $\bar{\theta}_{roll}$ are the running orientation skews. The key engineering rationale behind using the cumulative EMA representation rather than instantaneous values is to **allow a degree of natural body rocking during movement**. Quadrupedal locomotion naturally involves high-frequency, periodic body rotation (roll and pitch shifts) as the robot transfers weight during diagonal leg swing phases. Heavily penalizing instantaneous angles would force the robot to maintain an unnaturally rigid torso, which restricts leg clearance and stalls gait development. 
+
+By applying the penalty to the running skew, the system effectively acts as a **low-pass filter**: it permits high-frequency, self-correcting oscillations necessary for natural trotting while heavily penalizing low-frequency, persistent offsets (such as an unbalanced, permanent lean or drift). As noted in Section 3.3, because this penalty depends on the historical accumulation of pitch and roll, passing the running skew values back to the agent as observations is mathematically necessary to preserve the Markov property and prevent partial observability (POMDP) issues.
 
 ### 4.3.4 Diagonal Leg Symmetry Penalty
 To encourage the discovery of a natural walking trot, we enforce symmetry between diagonal pairs of legs:
