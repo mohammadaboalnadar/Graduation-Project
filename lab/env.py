@@ -89,6 +89,9 @@ class UnitreeA1Env(gym.Env):
 		self.penalty_fades.update(new_fades)
 
 	# ──────────────────────────────────────────────────────────────────
+	def lerp(self, a, b, alpha):
+		return a + (b-a)*alpha
+	
 	def reset(self, seed=None, options=None):
 		super().reset(seed=seed)
 
@@ -101,18 +104,18 @@ class UnitreeA1Env(gym.Env):
 		self._step_count = 0
 
 		# Randomise commands each episode so the robot generalises
-		self.ref_vel = np.array([1, 0, 0], dtype=np.float32)
-		# if self.np_random.choice([True, False]):
-		# 	ang = self.np_random.uniform(-np.pi, np.pi)
-		# 	self.ref_vel   = np.array([np.cos(ang), np.sin(ang), 0], dtype=np.float32)
-		# else:
-		# 	self.ref_vel = np.zeros(3, dtype=np.float32)
+		def_ref_vel = np.array([1, 0, 0], dtype=np.float32)
+		if self.np_random.choice([True, False]):
+			alpha, r = self.np_random.uniform(-np.pi, np.pi), self.np_random.uniform(0, 1)
+			proper_ref_vel = np.array([np.cos(alpha) * r, np.sin(alpha) * r, 0], dtype=np.float32)
+		else:
+			proper_ref_vel = np.zeros(3, dtype=np.float32)
 		
-		# if self.np_random.choice([True, False]):
-		# 	self.ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
+		if self.np_random.choice([True, False]):
+			proper_ref_vel[2] = self.np_random.uniform(-1.0, 1.0)  # random yaw rate
 
-		# self.ref_height = self.np_random.uniform(0.2, 0.36)
-		# self.ref_height = self.np_random.uniform(-1.0, 1.0)
+		self.ref_vel = self.lerp(def_ref_vel, proper_ref_vel, self.penalty_fades.get("ref_vel_lerp", 0.0))
+		self.ref_height = self.lerp(0.28, self.np_random.uniform(-1.0, 1.0), self.penalty_fades.get("ref_height_lerp", 0.0))
 		self.last_action = np.zeros(self.model.nu, dtype=np.float32)
 		self.last_last_action = np.zeros(self.model.nu, dtype=np.float32)
 		self.running_pitch = 0.0
@@ -229,7 +232,7 @@ class UnitreeA1Env(gym.Env):
 		speed_reward = self.gaus(actual_speed - ref_speed, 4.0, 0.1)
 
 		# Angular velocity:
-		ref_angular_vel = self.ref_vel[2]  # target yaw rate
+		ref_angular_vel = self.ref_vel[2] * 2  # target yaw rate
 		actual_angular_vel = self.data.qvel[5]  # actual yaw rate
 
 		angular_vel_reward = self.gaus(actual_angular_vel - ref_angular_vel, 100.0, 10.0, 1.0)

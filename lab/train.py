@@ -55,7 +55,7 @@ dt = float(model.opt.timestep)
 #[OPTIONS]:
 
 VERSION = "19.5_2"
-TOTAL_TIMESTEPS = 1_500_000_000
+TOTAL_TIMESTEPS = 2_000_000_000
 CHECKPOINT_FREQ = 10_000_000  # Save a checkpoint every N timesteps
 MAX_EPISODE_STEPS = 10*50 # N seconds at 50Hz
 N_ENVS = 8
@@ -68,6 +68,8 @@ SCHEDULES = {
 	"orientation": {"start": 200_000_000, "end": 400_000_000},
 	"symmetry": {"start": 300_000_000, "end": 500_000_000},
 	# "action_accel": {"start": 500_000_000, "end": 750_000_000}
+    "ref_vel_lerp": {"start": 1_000_000_000, "end": 1_300_000_000},
+    "ref_height_lerp": {"start": 1_300_000_000, "end": 1_500_000_000},
 }
 
 LR_START = 3e-4
