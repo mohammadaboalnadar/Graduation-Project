@@ -21,6 +21,10 @@ The multi-scale formulation addresses two conflicting demands during training:
    A broad Gaussian ($\alpha_{broad} = 0.1$) ensures that even for poor tracking performance, the agent receives a non-zero reward with a usable gradient, guiding the policy towards the target velocity.
 2. **Exploitation & Precision (Tight Gaussian)**: Once the agent learns to walk near the target velocity, the gradient of the broad Gaussian becomes flat near the peak ($v \approx v_{ref}$). The tight Gaussian ($\alpha_{tight} = 4.0$) provides a steep gradient near the target, penalizing small deviations and forcing the policy to learn high-precision tracking.
 
+![Multi-scale Gaussian reward profiles.](../Figures/gaussian_rewards.png)
+*Figure 4.1: Gaussian tracking reward profiles for various scale values ($\sigma$ or $\alpha$), illustrating the broad exploration and tight exploitation tolerance zones.*
+\label{fig:gaussian_rewards}
+
 ---
 
 ## 4.2 Pitfalls of Reward Plateaus (The Flat Tolerance Zone)
@@ -120,4 +124,13 @@ The curriculum parameters configured in `lab/train.py` are:
 - **Diagonal Symmetry Penalty**: Fades in from $300\text{M}$ to $500\text{M}$ steps.
 - **Hip Joint Pose Similarity**: Fades in from $720\text{M}$ to $850\text{M}$ steps.
 
+### Dynamic, Human-in-the-Loop Curriculum Tuning
+It is important to note that this curriculum schedule was not a static, pre-programmed timeline set at the beginning of training. Rather than following uniform, automated step divisions, the fade-in intervals were introduced dynamically and manually at checkpoints throughout the training process. The training runs were monitored in real-time for convergence plateaus, policy stability, and visual gait quality. 
+
+For instance, the default pose similarity penalty was introduced late (starting at 720M steps and ending at 850M steps) only after observing that the walking gait was highly stable but required joint trajectory regularization to prevent excessive kinematic drift. This human-in-the-loop adaptation based on empirical monitoring explains why the curriculum phases appear non-uniform or semi-random, reflecting real-world engineering interventions to steer the policy away from local minima during a very long training run.
+
 By gradually fading in these penalties, the PPO agent first discovers a fast forward walking gait and then refines it into a symmetric, stable trot without falling into local optima.
+
+![Modular curriculum learning schedules.](../Figures/curriculum_timeline.png)
+*Figure 4.2: Modular curriculum learning schedules, detailing the fade-in intervals for vertical velocity, base orientation, diagonal symmetry, and default pose penalties.*
+\label{fig:curriculum_timeline}

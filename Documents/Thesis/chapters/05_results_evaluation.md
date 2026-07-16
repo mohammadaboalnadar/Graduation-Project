@@ -36,7 +36,11 @@ The best performing run was **Trial 48**, which achieved a maximum mean evaluati
 
 Optuna's results demonstrated a strong preference for larger rollout horizons ($n\_steps$) and smaller learning rates to prevent policy collapse. While smaller mini-batch sizes (such as 128) achieved rapid convergence under the 20 million step search limit, manual long-term tests revealed that smaller batches resulted in gait deterioration during extended training. Based on these insights, the final training run scaled the rollout steps to $2^{16} = 65,536$ and the mini-batch size to $2^{12} = 4,096$, providing a highly stable configuration for the 1.5 billion step training cycle.
 
-The complete training progress curves showing reward accumulation, value loss, and policy entropy are visualized in **Figure C.1** in Appendix C.
+The complete training progress curves showing reward accumulation, value loss, and policy entropy are visualized in Figure 5.1:
+
+![PPO training convergence logs over 1.22B steps.](../Figures/training_progress.png)
+*Figure 5.1: Training convergence logs over 1.22 billion steps, showing mean episode reward, episode length, value loss, policy loss, and curriculum fades.*
+\label{fig:training_progress}
 
 ---
 
@@ -63,6 +67,14 @@ The performance of the trained policy under nominal flat-ground conditions is su
 | **Mean Joint Torque Norm** | — | **215.6184 Nm** |
 | **Mean Episode Length** | $500\text{ steps}$ | **500 steps** (no falls) |
 | **Locomotion Success Rate** | — | **100%** (zero falls over 50 eval runs) |
+
+![Velocity tracking accuracy under the 720M walking policy.](../Figures/evaluation_velocity.png)
+*Figure 5.2: Reference command vs. actual base forward ($v_x$) and lateral ($v_y$) velocities under the 720M step optimal walking policy.*
+\label{fig:evaluation_velocity}
+
+![Torso stability and vertical height trajectories.](../Figures/evaluation_stability.png)
+*Figure 5.3: Torso roll, pitch orientation tracking (top) and vertical height profile (bottom) demonstrating base stabilization during forward walking.*
+\label{fig:evaluation_stability}
 
 ---
 

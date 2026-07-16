@@ -27,6 +27,10 @@ The robot model deployed in the simulation environment is the **Unitree A1**, a 
   - Thigh flexion: $-1.047$ to $+4.189\text{ rad}$
   - Knee flexion: $-2.697$ to $-0.916\text{ rad}$
 
+![Unitree A1 Kinematics and coordinate frames.](../Figures/a1_kinematics.png)
+*Figure 3.1: Unitree A1 kinematic profile rendered directly in the MuJoCo simulation environment, showing coordinate frames on links, joints, and default standing pose.*
+\label{fig:a1_kinematics}
+
 ---
 
 ## 3.3 Observation Space Specification
@@ -71,6 +75,10 @@ where:
 - $q$ and $\dot{q}$ represent the current joint position and joint velocity, respectively.
 
 This joint-level PD formulation mirrors the actuator architecture of physical legged robots, where high-frequency motor control loops run independently on dedicated hardware, receiving lower-frequency joint target commands from the primary computer.
+
+![RL Policy and low-level joint PD control loop architecture.](../Figures/control_architecture.png)
+*Figure 3.2: High-level control loop architecture, tracing observation mapping, RL policy target generation, and low-level actuator PD torque computation.*
+\label{fig:control_loop}
 
 ---
 

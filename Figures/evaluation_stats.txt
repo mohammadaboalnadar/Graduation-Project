@@ -1,0 +1,7 @@
+Evaluation of Checkpoint: .\Models\checkpoints\v19.5_2\720000000_steps.zip
+Forward Velocity Tracking RMSE: 0.791584 m/s
+Lateral Velocity Tracking RMSE: 0.369410 m/s
+Torso Pitch Variance: 8.462866 deg^2
+Torso Roll Variance: 14.887688 deg^2
+Mean Cost of Transport (CoT): 9.805954
+Mean Joint Torque Norm: 215.618360 Nm

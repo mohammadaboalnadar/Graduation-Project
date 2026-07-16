@@ -71,18 +71,13 @@ def plot_training_logs(log_dir: str, output_path: str = "training_progress.png")
 
 
 if __name__ == "__main__":
-	version = "2.2"
-	iteration = 2
+	version = "19.5"
+	iteration = "2_0"
 
 	log_dir = rf".\lab\tb_logs\a1_walk_v{version}_{iteration}"
-	title = f"v{version} - Iteration {iteration}"
+	title = "training_progress"
 
 	figuresPath = r".\Figures"
 	if not os.path.exists(figuresPath):
 		os.makedirs(figuresPath)
-	if os.path.exists(f"{figuresPath}\\{title}.png"):
-		response = input(f"Figure [{title}.png] already exists. Overwrite? (y/n): ")
-		if response.lower() != "y":
-			print("Aborting figure export.")
-			exit()
 	plot_training_logs(log_dir, output_path=f"{figuresPath}\\{title}.png")
