@@ -18,7 +18,7 @@ To minimize the gap between simulation and reality, **System Identification (Sys
 ---
 
 ## 6.3 Domain Randomization Framework
-Even with rigorous system identification, minor physical mismatches will persist. To ensure the policy is robust enough to transfer to physical hardware, we deploy a **Domain Randomization** framework during training. Instead of training the agent on a single, deterministic physics model, we randomize key physical parameters at the start of each episode, forcing the neural network to learn a generalized policy:
+Even with rigorous system identification, minor physical mismatches will persist. To ensure the policy is robust enough to transfer to physical hardware, we deploy a **Domain Randomization** framework during training, which has been shown to be highly effective in sim-to-real transfer for legged systems [3], [4], [28]. Instead of training the agent on a single, static physics model, we randomize key physical parameters at the start of each episode, forcing the neural network to learn a generalized policy:
 
 1. **Mass Randomization**: The mass of the trunk ($m_{trunk}$) is randomized by adding a payload offset:
    $$m'_{trunk} = m_{trunk} + \delta_m, \quad \delta_m \sim \mathcal{U}(-1.0, 1.5)\text{ kg} \quad (6.1)$$

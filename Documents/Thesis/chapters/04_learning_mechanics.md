@@ -35,7 +35,7 @@ $$R_{step}(e) = \begin{cases} 1.0 & \text{if } |e| \le \delta \\ 0.0 & \text{if 
 where $e = v - v_{ref}$ represents the tracking error, and $\delta$ is a predefined tolerance threshold.
 
 ### Mathematical Proof of Vanishing Gradients
-Policy gradient algorithms (such as PPO) optimize the policy parameters $\theta$ by maximizing the objective:
+Policy gradient algorithms (such as PPO [7]) optimize the policy parameters $\theta$ by maximizing the objective:
 
 $$\nabla_\theta J(\theta) = \hat{\mathbb{E}}_t \left[ \nabla_\theta \log \pi_\theta(a_t | s_t) \hat{A}_t \right] \quad (4.4)$$
 
@@ -104,7 +104,7 @@ where $a_{k,t}$ is the action command output for motor $k$ at time step $t$. Min
 ---
 
 ## 4.4 Optimization Scaling & Avoidance of Policy Devolution
-Integrating multiple stability penalties introduces the risk of **policy devolution**, commonly referred to as the **"lazy agent trap."**
+Integrating multiple stability penalties introduces the risk of **policy devolution**, commonly referred to as the **"lazy agent trap"** or **reward hacking** [17].
 
 ### The Lazy Agent Trap
 If the penalty weights are fully active from the beginning of training, the policy will discover a local optimum: **refusing to move at all**. By remaining standing still or collapsing, the agent incurs zero vertical velocity, orientation, and symmetry penalties:

@@ -18,7 +18,7 @@ To guarantee stable convergence over the 1.5 billion steps, we deploy an unconve
 This configuration is significantly larger than typical continuous control setups (which usually use buffer sizes of $2,048$ or $4,096$ steps). By collecting over $524,000$ transitions per policy iteration, the policy updates are computed on a massive and highly diverse set of states, yielding exceptionally low-variance gradient estimates. This configuration prevents policy degradation or catastrophic divergence, ensuring monotonic gait improvement over the long-term training cycle.
 
 ### 5.1.2 Hyperparameter Optimization via Optuna
-Prior to finalizing the training configuration, a systematic hyperparameter search was conducted using Optuna to identify parameters that promote stable learning. The search was executed using the Tree-structured Parzen Estimator (TPE) sampler for parameter suggestion and a Median Pruner to prune underperforming trials early. 
+Prior to finalizing the training configuration, a systematic hyperparameter search was conducted using Optuna [26] to identify parameters that promote stable learning. The search was executed using the Tree-structured Parzen Estimator (TPE) sampler for parameter suggestion and a Median Pruner to prune underperforming trials early. 
 
 The study, named `a1_walk_ppo_optuna_long`, ran for a total of **78 trials**, each with a budget of 20 million steps. The outcomes of the trials were:
 - **Completed Trials**: 34 trials (completed the full 20M steps).
@@ -52,6 +52,9 @@ The evaluation metrics are defined as:
    $$RMSE_v = \sqrt{\frac{1}{T}\sum_{t=1}^{T} (v_t - v_{ref,t})^2} \quad (5.1)$$
 2. **Torso Orientation Variance (Gait Smoothness)**: The variance of the roll and pitch angles of the trunk. Lower variance corresponds to a smoother gait with less vertical oscillation.
 3. **Mean Episode Length**: The number of steps the robot stays upright before falling or reaching the episode step limit (max 500 steps during evaluation).
+4. **Mean Cost of Transport (CoT)**: A dimensionless metric representing the energy efficiency of the locomotion gait, calculated as the mechanical power consumption divided by the weight and velocity of the robot [27]:
+   $$CoT = \frac{\sum_{i=1}^{12} |\tau_i \dot{q}_i|}{m g v} \quad (5.2)$$
+   where $\tau_i$ is the joint torque, $\dot{q}_i$ is the joint velocity, $m = 12.453\text{ kg}$ is the robot mass, $g = 9.81\text{ m/s}^2$ is gravity, and $v$ is the actual forward base speed. Lower CoT values correspond to higher locomotion energy efficiency.
 
 The performance of the trained policy under nominal flat-ground conditions is summarized in Table 5.1:
 

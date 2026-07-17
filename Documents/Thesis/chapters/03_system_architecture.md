@@ -1,7 +1,7 @@
 # Chapter 3: System Architecture & Simulation Interface
 
 ## 3.1 The MuJoCo Simulation Environment
-Robotic reinforcement learning tasks benefit from simulation platforms that offer high-speed execution alongside physics fidelity. This project utilizes the **MuJoCo (Multi-Joint dynamics with Contact)** physics engine. MuJoCo uses a convex contact solver that resolves multi-body constraints via a mathematical programming approach, rather than the spring-damper contact approximations used in older engines. This formulation guarantees physical plausibility and prevents penetration artifacts in rigid-body contact solver equations.
+Robotic reinforcement learning tasks benefit from simulation platforms that offer high-speed execution alongside physics fidelity. This project utilizes the **MuJoCo (Multi-Joint dynamics with Contact)** physics engine [21]. MuJoCo uses a convex contact solver that resolves multi-body constraints via a mathematical programming approach, rather than the spring-damper contact approximations used in older engines. This formulation guarantees physical plausibility and prevents penetration artifacts in rigid-body contact solver equations.
 
 The simulation and control loop are structured hierarchically:
 - **Simulation Timestep ($\Delta t_{sim}$)**: The internal physics simulation runs at a timestep of $\Delta t_{sim} = 0.002\text{ s}$ (500 Hz). This duration is chosen to ensure numerical stability in contact physics and joint acceleration integration, preventing numerical explosions during high-velocity collisions.
@@ -12,7 +12,7 @@ The simulation and control loop are structured hierarchically:
 ---
 
 ## 3.2 Kinematic Profile of the Unitree A1
-The robot model deployed in the simulation environment is the **Unitree A1**, a commercial-grade quadrupedal platform. The physical parameters of the robot are modeled from the manufacturer's specification files:
+The robot model deployed in the simulation environment is the **Unitree A1**, a commercial-grade quadrupedal platform. The physical parameters of the robot are modeled from the manufacturer's specification files [22]:
 - **Total Robot Mass ($m$)**: The total simulated mass of the robot is approximately $12.45\text{ kg}$, which comprises:
   - Trunk (base body): $4.713\text{ kg}$
   - Hips (4 units): $0.696\text{ kg}$ per hip
@@ -87,10 +87,10 @@ The development, training, and evaluation of the quadrupedal locomotion policy a
 
 ### 3.5.1 Software Libraries and Frameworks
 *   **Programming Language & Runtime**: Python (v3.12.0) is utilized to manage the custom virtual environment (`.venv`) and coordinate the training and evaluation execution scripts.
-*   **Simulation Engine (MuJoCo)**: The rigid-body physics simulation is powered by MuJoCo (Multi-Joint dynamics with Contact), which resolves the contact dynamics, joint torques, and kinematics of the Unitree A1 model.
-*   **Environment API (Gymnasium)**: The custom robot environment is wrapped using Gymnasium (v0.29), providing standard API endpoints (`step`, `reset`, `observation_space`, and `action_space`) for the RL training loops.
-*   **Reinforcement Learning Library (Stable-Baselines3)**: The training pipeline utilizes Stable-Baselines3 (v2.0) to implement the Proximal Policy Optimization (PPO) algorithm. SB3 handles parallelized environment execution via `SubprocVecEnv` and manages online observation and reward scaling via the `VecNormalize` wrapper.
-*   **Deep Learning Back-End (PyTorch)**: Neural network compilation and gradient backpropagation are executed using PyTorch (v2.4). The actor and critic are modeled as Multilayer Perceptrons (MLPs) with two hidden layers of 256 units each.
+*   **Simulation Engine (MuJoCo)**: The rigid-body physics simulation is powered by MuJoCo (Multi-Joint dynamics with Contact) [21], which resolves the contact dynamics, joint torques, and kinematics of the Unitree A1 model.
+*   **Environment API (Gymnasium)**: The custom robot environment is wrapped using Gymnasium (v0.29) [23], providing standard API endpoints (`step`, `reset`, `observation_space`, and `action_space`) for the RL training loops.
+*   **Reinforcement Learning Library (Stable-Baselines3)**: The training pipeline utilizes Stable-Baselines3 (v2.0) [24] to implement the Proximal Policy Optimization (PPO) algorithm. SB3 handles parallelized environment execution via `SubprocVecEnv` and manages online observation and reward scaling via the `VecNormalize` wrapper.
+*   **Deep Learning Back-End (PyTorch)**: Neural network compilation and gradient backpropagation are executed using PyTorch (v2.4) [25]. The actor and critic are modeled as Multilayer Perceptrons (MLPs) with two hidden layers of 256 units each.
 *   **Experiment Tracking and Logging**: Weights & Biases (WandB) and TensorBoard are used for real-time visualization and logging of convergence curves (reward, value loss, approximate KL divergence) and modular curriculum schedules.
 
 ### 3.5.2 Computational Workstation Specifications
